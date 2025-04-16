@@ -34,5 +34,5 @@ class OvermortalAPI:
         print("STARTED THE GAME")
 
 
-api = OvermortalAPI
+api = OvermortalAPI()
 api.login()
