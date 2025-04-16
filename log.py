@@ -1,9 +1,12 @@
 # log.py
 import logging
+import os
+
+LOG_LEVEL = os.getenv("BOT_LOG_LEVEL", "INFO").upper()
 
 # Configure root logger
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, LOG_LEVEL),
     format='[%(asctime)s] [%(levelname)s] %(message)s',
     datefmt='%H:%M:%S',
     handlers=[

@@ -51,6 +51,10 @@ class Screen:
             return max_loc, max_val
         return None
 
+    def back(self):
+        """ Sends the Android 'Back' command to ADB device. """
+        subprocess.run(["adb", "shell", "input", "keyevent", "KEYCODE_BACK"], check=True)
+
     def find_button(self, template_path: str, threshold: float = THRESHOLD) -> (int, int):
         """ Returns location of button in pixel coordinates or None if not found. """
         result = self._locate_image(f'resources/buttons/{template_path}.png', threshold)
