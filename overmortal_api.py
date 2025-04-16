@@ -1,4 +1,5 @@
 from screen import Screen, StateNotReached, ActionNotPerformed
+from log import logger
 
 
 class OvermortalAPI:
@@ -13,6 +14,7 @@ class OvermortalAPI:
         try:
             state = self.screen.wait_for_any_state(["login_start_screen", "login_notification_screen"])
         except StateNotReached:
+            logger.exception("Failed to get to login screen")
             exit(0)
 
         # Tap bottom area to exit notification screen if there.
@@ -21,14 +23,16 @@ class OvermortalAPI:
             try:
                 self.screen.wait_for_state("login_start_screen")
             except StateNotReached:
+                logger.exception("Failed to clear login notifications")
                 exit(0)
 
         # Find the start button
         try:
             self.screen.tap_button("game_start_button")
         except ActionNotPerformed:
+            logger.exception("Failed to press the start button")
 
-        print("STARTED THE GAME")
+        logger.info("Started the game")
 
 
 api = OvermortalAPI()
