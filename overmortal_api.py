@@ -1,35 +1,32 @@
-from screen import Screen
-
-screen = Screen()
-
-
-class StateNotReached(Exception):
-    pass
-
-
-class ActionNotPerformed(Exception):
-    pass
+from screen import Screen, StateNotReached, ActionNotPerformed
 
 
 class OvermortalAPI:
 
+    def __init__(self):
+        self.screen = Screen()
+
     def login(self):
         """ Logs into the game. """
-        found, state = screen.wait_for_any_state(["login_start_screen", "login_notification_screen"])
+        logger.info("Starting API")
 
-        if not found:
-            raise StateNotReached("Failed to get to login screen")
+        try:
+            state = self.screen.wait_for_any_state(["login_start_screen", "login_notification_screen"])
+        except StateNotReached:
+            exit(0)
 
         # Tap bottom area to exit notification screen if there.
         if state == 1:
-            screen.tap(screen.dimensions[0] * 0.5, screen.dimensions[1] * 0.9)
-            found = screen.wait_for_state("login_start_screen")
-            if not found:
-                raise StateNotReached("Failed to clear login notifications")
+            self.screen.tap(self.screen.dimensions[0] * 0.5, self.screen.dimensions[1] * 0.9)
+            try:
+                self.screen.wait_for_state("login_start_screen")
+            except StateNotReached:
+                exit(0)
 
         # Find the start button
-        if not screen.tap_button("game_start_button"):
-            raise ActionNotPerformed("Failed to press the start button")
+        try:
+            self.screen.tap_button("game_start_button")
+        except ActionNotPerformed:
 
         print("STARTED THE GAME")
 

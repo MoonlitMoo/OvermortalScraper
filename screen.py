@@ -5,6 +5,14 @@ from typing import List
 import cv2
 
 
+class StateNotReached(Exception):
+    pass
+
+
+class ActionNotPerformed(Exception):
+    pass
+
+
 class Screen:
     CURRENT_SCREEN = "./screen.png"
     THRESHOLD = 0.9
@@ -75,10 +83,10 @@ class Screen:
             if result is not None:
                 return True
             time.sleep(poll_interval)
-        return False
+        raise StateNotReached(f"Failed to find state {template_path}")
 
     def wait_for_any_state(self, template_paths: List[str], threshold: float = THRESHOLD, timeout: float = TIMEOUT,
-                           poll_interval: float = POLL_INTERVAL) -> (bool, int):
+                           poll_interval: float = POLL_INTERVAL) -> int:
         """ Returns true and what state when any state in given list is found.
 
         Parameters
@@ -105,9 +113,9 @@ class Screen:
             for i, path in enumerate(template_paths):
                 result = self._locate_image(f'resources/state/{path}.png', threshold)
                 if result is not None:
-                    return True, i
+                    return i
             time.sleep(poll_interval)
-        return False, None
+        raise StateNotReached(f"Failed to find any of state {template_paths}")
 
     def tap(self, x, y):
         """ Taps screen at given coordinates """
@@ -125,9 +133,9 @@ class Screen:
             loc = self.find_button(template_path, threshold)
             time.sleep(poll_interval)
 
-        # Return false if failed
+        # Raise if failed
         if loc is None:
-            return False
+            raise ActionNotPerformed(f"Failed to press button {template_path}")
 
         # Click centre of button
         self.tap(loc[0] + but_x / 2, loc[1] + but_y / 2)
