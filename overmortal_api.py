@@ -127,25 +127,27 @@ class OvermortalAPI:
                 logger.debug("Challenging monster")
                 iterations += 1
                 self.screen.tap_button(f"{path}/challenge")
-                state = self.screen.wait_for_any_state([f"{path}/victory", f"{path}/rewards"], timeout=60)
+                state = self.screen.wait_for_any_state(
+                    [f"{path}/victory", f"{path}/rewards", f"{path}/defeat"], timeout=60)
                 match state:
                     case 0:
                         logger.debug("Succeeded monster attempt")
-                        self.screen.tap(400, 1300)
                     case 1:
+                        # Exit reward screen
                         self.screen.tap(400, 1300)
                         time.sleep(0.5)
-                        self.screen.tap(400, 1300)
                         logger.debug("Succeeded monster attempt")
                     case 2:
                         logger.debug("Failed monster attempt")
                         has_failed = True
                     case _:
-                        has_failed = True
                         logger.warning("Unknown state in demon spire, saving debug screencap")
+                        has_failed = True
+                self.screen.tap(400, 1800)
         except:
             logger.exception("Failed to attempt the spire, saving debug screenshot")
             self.debug_screencap(f"demonspire")
+        self.screen.back()  # Try to get back to home screen
         logger.info(f"Stopping attempting the spire after {iterations} attempt(s)")
 
 

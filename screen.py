@@ -36,8 +36,9 @@ class Screen:
 
     def update(self):
         """ Updates saved screen image """
-        subprocess.run(["adb", "shell", "screencap", "-p", "/sdcard/screen.png"])
-        subprocess.run(["adb", "pull", "/sdcard/screen.png", self.CURRENT_SCREEN])
+        subprocess.run(["adb", "shell", "screencap", "-p", "/sdcard/screen.png"], stdout=subprocess.DEVNULL)
+        subprocess.run(["adb", "pull", "/sdcard/screen.png", self.CURRENT_SCREEN],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return cv2.imread(self.CURRENT_SCREEN)
 
     def _locate_image(self, template_path: str, threshold: float = THRESHOLD):
