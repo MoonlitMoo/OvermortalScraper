@@ -1,6 +1,8 @@
 import time
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
+import seaborn
 
 from log import logger
 from screen import Screen
@@ -11,12 +13,14 @@ class ItemScraper:
     def __init__(self):
         self.screen = Screen(logger)
 
-    def capture_no_notifications(self, name: str = None, retries: int = 5, delay: float = 1.0):
+    def capture_no_notifications(self, name: str = None, retries: int = 5, delay: float = 1.0,
+                                 green_mask=[200, 400, 100, 300]):
         """
         Capture the current screen and ensure no green popups are present.
 
         Parameters
         ----------
+        green_mask
         name : str, optional
             Filename to save the screenshot. If None, use a timestamped filename.
         retries : int, optional
@@ -42,6 +46,7 @@ class ItemScraper:
 
             # Create a mask for green areas
             mask = cv2.inRange(hsv, lower_green, upper_green)
+            mask[green_mask[2]:green_mask[3], green_mask[0]:green_mask[1]] = 0  # Skip any pictures
 
             green_pixels = cv2.countNonZero(mask)
             total_pixels = img.shape[0] * img.shape[1]
@@ -63,7 +68,7 @@ class ItemScraper:
         logger.warning("[Screen] Failed to get clean screenshot after retries.")
         return False
 
-    def iterate_list(self, template_path: str, save_name: str):
+    def iterate_list(self, template_path: str, save_name: str, offset=0):
         """
         Iterate through each weapon/item on the list, open details,
         capture screenshots before and after scrolling, and save them.
@@ -88,28 +93,69 @@ class ItemScraper:
             click_x = 500
             click_y = match_y + 60
 
-            logger.info(f"Selecting item {idx + 1} at ({click_x}, {click_y})")
+            logger.info(f"Selecting item {idx + 1 + offset} at ({click_x}, {click_y})")
             self.screen.tap(click_x, click_y)
             time.sleep(0.5)  # Small delay to load
 
-            # 4. Screenshot weapon top
-            self.screen.swipe_up(700, 300)
-            self.capture_no_notifications(name=f"{save_name}_item{idx + 1}_t.png")
-            time.sleep(0.25)
-
-            # 5. Swipe up
-            self.screen.swipe_down(700, 300)
-            time.sleep(0.25)
-
-            # 6. Screenshot weapon bottom
-            self.capture_no_notifications(name=f"{save_name}_item{idx + 1}_b.png")
-            time.sleep(0.25)
+            self.save_item(save_name, idx + 1 + offset)
 
             # 7. Tap to exit item screen
             self.screen.tap(500, 1700)
             time.sleep(0.5)  # Small wait to return to list
 
         logger.info(f"Finished scraping all {save_name} items.")
+
+    def save_item(self, save_name, number):
+        """ Saves the current item. """
+        # 4. Screenshot weapon top
+        self.screen.swipe_up(700, 300)
+        self.capture_no_notifications(name=f"{save_name}_item{number}_t.png")
+        time.sleep(0.25)
+
+        # 5. Swipe up
+        self.screen.swipe_down(700, 300)
+        time.sleep(0.25)
+
+        # 6. Screenshot weapon bottom
+        self.capture_no_notifications(name=f"{save_name}_item{number}_b.png")
+        time.sleep(0.25)
+
+    def save_abilities(self, ability_type):
+        """ Saves the items from the ability screen """
+        x_loc = [300, 600, 900]
+        y_loc = [520, 750]
+        logger.info(f"Starting {ability_type} saving")
+        i = 0
+        for x in x_loc:
+            for y in y_loc:
+                i += 1
+                logger.debug(f"Selecting item {i} at {x}, {y}")
+                self.screen.tap(x, y)
+                time.sleep(0.5)
+                self.capture_no_notifications(f"ability_{ability_type}_item{i}.png")
+                logger.debug(f"Exiting ability screen")
+                self.screen.tap(500, 1700)
+                time.sleep(0.5)
+
+    def save_pets(self):
+        """ Saves the items from the pet formation screen """
+        x_loc = [200, 400, 600, 900]
+        y_loc = [900, 1400]
+        logger.info(f"Starting pet info saving")
+        i = 0
+        for y in y_loc:
+            for x in x_loc:
+                i += 1
+                if i > 6: break
+                logger.debug(f"Selecting pet {i} at {x}, {y}")
+                self.screen.tap(x, y)  # Select pet
+                time.sleep(0.5)  # Select info
+                self.screen.tap_button("../item_scraper/info_button")
+                time.sleep(0.5)
+                self.capture_no_notifications(f"pet_item{i}.png", green_mask=[150, 340, 300, 1700])
+                logger.debug(f"Exiting Pet screen")
+                self.screen.tap(500, 1800)
+                time.sleep(0.5)
 
     def debug_show_matches(self, template_path: str, threshold: float = 0.8, radius: int = 20,
                            window_name: str = "Matches"):
@@ -144,4 +190,7 @@ class ItemScraper:
         cv2.destroyAllWindows()
 
 
-ItemScraper().iterate_list("resources/item_scraper/item_edge.png", "weapon")
+# ItemScraper().iterate_list("resources/item_scraper/item_edge.png", "relic", 12)
+# ItemScraper().save_item("curio", 3)
+# ItemScraper().save_abilities("magicka")
+ItemScraper().save_pets()
