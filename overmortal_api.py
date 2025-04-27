@@ -10,7 +10,7 @@ from screen import Screen, StateNotReached, ActionNotPerformed
 class OvermortalAPI:
 
     def __init__(self):
-        self.screen = Screen()
+        self.screen = Screen(logger)
 
     def debug_screencap(self, debug_name: str):
         timestamp = datetime.now().strftime("%Y%m%d-%H-%M-%S")
@@ -144,7 +144,7 @@ class OvermortalAPI:
                         logger.warning("Unknown state in demon spire, saving debug screencap")
                         has_failed = True
                 self.screen.tap(400, 1800)
-        except:
+        except Exception:
             logger.exception("Failed to attempt the spire, saving debug screenshot")
             self.debug_screencap(f"demonspire")
         self.screen.back()  # Try to get back to home screen
@@ -152,5 +152,5 @@ class OvermortalAPI:
 
 
 api = OvermortalAPI()
-# api.login()
-api.attempt_spire()
+api.login()
+# api.attempt_spire()

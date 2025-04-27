@@ -22,7 +22,8 @@ class Screen:
 
     dimensions = None, None
 
-    def __init__(self):
+    def __init__(self, logger):
+        self.logger = logger
         self.update()
         y, x, _ = cv2.imread(self.CURRENT_SCREEN).shape
         self.dimensions = x, y
@@ -34,6 +35,25 @@ class Screen:
     def grayscale(self):
         """ Returns current screen image in grayscale. """
         return cv2.cvtColor(cv2.imread(self.CURRENT_SCREEN), cv2.COLOR_BGR2GRAY)
+
+    def capture(self, name: str = None):
+        """
+        Capture the current screen in colour and save it to a file.
+
+        Parameters
+        ----------
+        name : str, optional
+            Filename to save the screenshot. If None, uses a timestamped filename.
+        """
+        self.update()  # Make sure the latest screen is fetched
+        img = self.colour()  # Get the colour version of the screen
+
+        if name is None:
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            name = f"screenshot_{timestamp}.png"
+
+        cv2.imwrite(f'screencaps/{name}', img)
+        self.logger.info(f"[Screen] Saved screenshot: {name}")
 
     def update(self):
         """ Updates saved screen image """
@@ -105,10 +125,6 @@ class Screen:
                 break
 
         return final_matches
-
-    def back(self):
-        """ Sends the Android 'Back' command to ADB device. """
-        subprocess.run(["adb", "shell", "input", "keyevent", "KEYCODE_BACK"], check=True)
 
     def find_button(self, template_path: str, threshold: float = THRESHOLD) -> (int, int):
         """ Returns location of button in pixel coordinates or None if not found. """
@@ -199,3 +215,41 @@ class Screen:
         # Click centre of button
         self.tap(loc[0] + but_x / 2, loc[1] + but_y / 2)
         return True
+
+    def swipe(self, x1: int, y1: int, x2: int, y2: int, duration_ms: int = 300):
+        """
+        Perform a swipe gesture from (x1, y1) to (x2, y2).
+
+        Parameters
+        ----------
+        x1 : int
+            Start x-coordinate.
+        y1 : int
+            Start y-coordinate.
+        x2 : int
+            End x-coordinate.
+        y2 : int
+            End y-coordinate.
+        duration_ms : int, optional
+            Duration of the swipe in milliseconds (default is 300 ms).
+        """
+        cmd = f"adb shell input swipe {x1} {y1} {x2} {y2} {duration_ms}"
+        subprocess.run(cmd.split(), check=True)
+
+    def swipe_up(self, amount: int = 300, duration_ms: int = 300):
+        width, height = self.dimensions
+        x = width // 2
+        y_start = height // 2 - amount // 2
+        y_end = height // 2 + amount // 2
+        self.swipe(x, y_start, x, y_end, duration_ms)
+
+    def swipe_down(self, amount: int = 300, duration_ms: int = 300):
+        width, height = self.dimensions
+        x = width // 2
+        y_start = height // 2 + amount // 2
+        y_end = height // 2 - amount // 2
+        self.swipe(x, y_start, x, y_end, duration_ms)
+
+    def back(self):
+        """ Sends the Android 'Back' command to ADB device. """
+        subprocess.run(["adb", "shell", "input", "keyevent", "KEYCODE_BACK"], check=True)
