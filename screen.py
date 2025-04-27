@@ -3,6 +3,7 @@ import time
 from typing import List
 
 import cv2
+import numpy as np
 
 
 class StateNotReached(Exception):
@@ -51,6 +52,59 @@ class Screen:
         if max_val >= threshold:
             return max_loc, max_val
         return None
+
+    import cv2
+    import numpy as np
+
+    def find_all_images(self, template_path: str, threshold: float = THRESHOLD, max_results: int = 10):
+        """
+        Find all locations where the template matches above a given threshold.
+
+        Parameters
+        ----------
+        template_path : str
+            Path to the template image.
+        threshold : float, optional
+            Matching threshold (default is THRESHOLD).
+        max_results : int, optional
+            Maximum number of matches to return (default is 10).
+
+        Returns
+        -------
+        List[Tuple[Tuple[int, int], float]]
+            List of (position, match_value) tuples.
+        """
+        self.update()
+        screen = self.grayscale()
+        template = cv2.cvtColor(cv2.imread(template_path), cv2.COLOR_BGR2GRAY)
+
+        res = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
+
+        # Find all locations above the threshold
+        match_locations = np.where(res >= threshold)
+
+        matches = []
+        for (y, x) in zip(*match_locations):  # Note cv2 gives (y, x)
+            match_val = res[y, x]
+            matches.append(((x, y), match_val))
+
+        # Sort matches by match value, descending (optional)
+        matches = sorted(matches, key=lambda x: -x[1])
+
+        # Remove very close duplicates
+        final_matches = []
+        taken = np.zeros_like(res)
+        for (pos, score) in matches:
+            x, y = pos
+            if not taken[y, x]:
+                final_matches.append((pos, score))
+                # Mask an area around the selected match
+                cv2.circle(taken, center=(x, y), radius=20, color=True,
+                           thickness=-1)  # 20px radius prevents very close repeats
+            if len(final_matches) >= max_results:
+                break
+
+        return final_matches
 
     def back(self):
         """ Sends the Android 'Back' command to ADB device. """
