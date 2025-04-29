@@ -1,8 +1,10 @@
+import re
 import time
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn
+from pytesseract import pytesseract
 
 from log import logger
 from screen import Screen
@@ -146,7 +148,8 @@ class ItemScraper:
         for y in y_loc:
             for x in x_loc:
                 i += 1
-                if i > 6: break
+                if i > 6:
+                    break
                 logger.debug(f"Selecting pet {i} at {x}, {y}")
                 self.screen.tap(x, y)  # Select pet
                 time.sleep(0.5)  # Select info
@@ -156,6 +159,25 @@ class ItemScraper:
                 logger.debug(f"Exiting Pet screen")
                 self.screen.tap(500, 1800)
                 time.sleep(0.5)
+        logger.info(f"Finished pet info saving")
+
+    def save_divinities(self, offset=0):
+        """ Saves the items from the pet formation screen """
+        x_loc = [200, 400, 500, 700, 900]
+        y_loc = [800, 1350]
+        logger.info(f"Starting divinity info saving")
+        i = 0
+        for y in y_loc:
+            for x in x_loc:
+                i += 1
+                logger.debug(f"Selecting divinity {i} at {x}, {y}")
+                self.screen.tap(x, y)  # Select divinity
+                time.sleep(0.5)
+                self.capture_no_notifications(f"divinity_item{i + offset}.png", green_mask=[100, 1000, 200, 400])
+                logger.debug(f"Exiting Divinity screen")
+                self.screen.tap(500, 1800)
+                time.sleep(0.5)
+        logger.info(f"Finished divinity info saving")
 
     def debug_show_matches(self, template_path: str, threshold: float = 0.8, radius: int = 20,
                            window_name: str = "Matches"):
@@ -189,8 +211,155 @@ class ItemScraper:
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
+    def parse_and_sum(text: str) -> float:
+        """
+        Parse a text like '1.38M +1.7M' or '421.38K +518.29K' and return the sum as a float.
+
+        Parameters
+        ----------
+        text : str
+            Text containing two numbers separated by '+'.
+
+        Returns
+        -------
+        float
+            The sum of the two numbers.
+        """
+        # Remove spaces
+        text = text.replace(' ', '')
+
+        # Regular expression to find numbers with optional 'K' or 'M'
+        pattern = r'([\d\.]+)([MK]?)'
+        matches = re.findall(pattern, text)
+
+        if not matches or len(matches) < 2:
+            raise ValueError(f"Could not parse two numbers from: {text}")
+
+        total = 0.0
+        for number, suffix in matches:
+            num = float(number)
+            if suffix == 'M':
+                num *= 1_000_000
+            elif suffix == 'K':
+                num *= 1_000
+            total += num
+
+        return total
+
+
+def parse_and_sum(text: str) -> float:
+    """
+    Parse a text like '1.38M +1.7M' or '421.38K +518.29K' and return the sum as a float.
+
+    Parameters
+    ----------
+    text : str
+        Text containing two numbers separated by '+'.
+
+    Returns
+    -------
+    float
+        The sum of the two numbers.
+    """
+    # Remove spaces
+    text = text.replace(' ', '')
+
+    # Regular expression to find numbers with optional 'K' or 'M'
+    pattern = r'([\d\.]+)([MK]?)'
+    matches = re.findall(pattern, text)
+
+    if not matches or len(matches) < 2:
+        raise ValueError(f"Could not parse two numbers from: {text}")
+
+    total = 0.0
+    for number, suffix in matches:
+        num = float(number)
+        if suffix == 'M':
+            num *= 1_000_000
+        elif suffix == 'K':
+            num *= 1_000
+        total += num
+    return total
+
+
+class ScreenshotProcesser():
+
+    def __init__(self):
+        pass
+
+    def extract_text_from_area(self, image_path: str, area: tuple, psm: int = 6, thresholding: bool = True) -> str:
+        """
+        Extract text from a specific rectangular area of an image.
+
+        Parameters
+        ----------
+        image_path : str
+            Path to the input image file.
+        area : tuple
+            (x1, y1, x2, y2) specifying the crop rectangle.
+        psm : int, optional
+            Page Segmentation Mode for Tesseract (default 6 = block of text).
+        thresholding : bool, optional
+            Whether to apply thresholding before OCR (default True).
+
+        Returns
+        -------
+        str
+            Extracted text from the specified area.
+        """
+        # Load image
+        img = cv2.imread(image_path)
+
+        # Crop area
+        x1, x2, y1, y2 = area
+        crop = img[y1:y2, x1:x2]
+
+        # Preprocess
+        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+        if thresholding:
+            _, proc = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
+        else:
+            proc = gray
+
+        # OCR config
+        custom_config = f'--oem 3 --psm {psm}'
+        text = pytesseract.image_to_string(proc, config=custom_config)
+
+        return text.strip()
+
+    def extract_text_from_lines(self, image_path, first_line, line_height, num_lines, psm, thresholding: bool = True):
+        lines = []
+        for i in range(num_lines):
+            # Adjust area y1, y2 down by the line height
+            area = first_line
+            area[2] += line_height * i
+            area[3] += line_height * i
+            lines.append(self.extract_text_from_area(image_path, area, psm, thresholding))
+        return lines
+
+    def process_weapon(self, image_path):
+        # Define crop areas (x1, x2, y1, y2) based on your screenshots
+        title_area = (300, 900, 250, 320)
+        basic_effects_area = (100, 800, 510, 700)
+
+        # Extract from top image
+        raw_title_text = self.extract_text_from_area(f"{image_path}_t.png", title_area, 7)
+        raw_basic_text = self.extract_text_from_area(f"{image_path}_t.png", basic_effects_area, 6)
+
+        title_text = raw_title_text.split("+")[0].strip()
+        basic_effects = {}
+        for line in raw_basic_text.split("\n"):
+            effect, value = line.split(":")
+            basic_effects[effect] = parse_and_sum(value)
+
+        print(f"Found title text {raw_title_text} -> {title_text}")
+        print(f"Found basic text {raw_basic_text} -> {basic_effects}")
+
+
+ScreenshotProcesser().process_weapon("screencaps/weapon_item2")
 
 # ItemScraper().iterate_list("resources/item_scraper/item_edge.png", "relic", 12)
-# ItemScraper().save_item("curio", 3)
+# ItemScraper().save_item("relic", 19)
 # ItemScraper().save_abilities("magicka")
-ItemScraper().save_pets()
+# ItemScraper().save_pets()
+# ItemScraper().save_divinities(60)
