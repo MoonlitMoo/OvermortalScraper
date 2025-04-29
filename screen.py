@@ -192,9 +192,17 @@ class Screen:
 
         return final_matches
 
-    def find_button(self, template_path: str, threshold: float = THRESHOLD) -> (int, int):
-        """ Returns location of button in pixel coordinates or None if not found. """
-        result = self._locate_image(f'resources/buttons/{template_path}.png', threshold)
+    def find_area(self, template_path: str, threshold: float = THRESHOLD) -> (int, int):
+        """ Returns area (x1, x2, y1, y2) of an image in pixel coordinates or None if not found. """
+        result = self._locate_image(f'resources/{template_path}.png', threshold)
+        if result is None: return None
+        y_len, x_len, _ = self._load_template_image(f'resources/{template_path}.png').shape
+        x, y = result[0]
+        return x, x + x_len, y, y + y_len
+
+    def find(self, template_path: str, threshold: float = THRESHOLD) -> (int, int):
+        """ Returns location of image in pixel coordinates or None if not found. """
+        result = self._locate_image(f'resources/{template_path}.png', threshold)
         return None if result is None else result[0]
 
     def wait_for_state(self, template_path: str, threshold: float = THRESHOLD, timeout: float = TIMEOUT,
@@ -265,21 +273,20 @@ class Screen:
     def tap_button(self, template_path: str, threshold: float = THRESHOLD, timeout: float = TIMEOUT,
                    poll_interval: float = POLL_INTERVAL) -> bool:
         """ Clicks selected button with a timeout"""
-        but_y, but_x, _ = self._load_template_image(f'resources/buttons/{template_path}.png').shape
-        loc = None
+        button_area = None
 
         # Find the button
         start_time = time.time()
-        while time.time() - start_time < timeout and loc is None:
-            loc = self.find_button(template_path, threshold)
+        while time.time() - start_time < timeout and button_area is None:
+            button_area = self.find_area(f'buttons/{template_path}', threshold)
             time.sleep(poll_interval)
 
         # Raise if failed
-        if loc is None:
+        if button_area is None:
             raise ActionNotPerformed(f"Failed to press button {template_path}")
 
         # Click centre of button
-        self.tap(loc[0] + but_x / 2, loc[1] + but_y / 2)
+        self.tap((button_area[0] + button_area[1]) / 2, (button_area[2] + button_area[3]) / 2)
         return True
 
     def swipe(self, x1: int, y1: int, x2: int, y2: int, duration_ms: int = 300):
@@ -301,6 +308,7 @@ class Screen:
         """
         cmd = f"adb shell input swipe {x1} {y1} {x2} {y2} {duration_ms}"
         subprocess.run(cmd.split(), check=True)
+        time.sleep(duration_ms / 1000 + 0.2)
 
     def swipe_up(self, amount: int = 300, duration_ms: int = 300):
         width, height = self.dimensions
