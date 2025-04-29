@@ -24,6 +24,10 @@ class Screen:
 
     def __init__(self, logger):
         self.logger = logger
+        self.filter_notifications = False
+        self.green_mask = (0, 0, 0, 0)
+        self.green_select = (0, 1080, 700, 900)
+
         self.update()
         y, x, _ = cv2.imread(self.CURRENT_SCREEN).shape
         self.dimensions = x, y
@@ -83,17 +87,26 @@ class Screen:
             self.logger.debug(f"[Screen] Saved clean screenshot: {name}")
         return False
 
-    def update(self):
-        """ Updates saved screen image """
+    def _update(self):
         subprocess.run(["adb", "shell", "screencap", "-p", "/sdcard/screen.png"], stdout=subprocess.DEVNULL)
         subprocess.run(["adb", "pull", "/sdcard/screen.png", self.CURRENT_SCREEN],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    def update(self):
+        """ Updates saved screen image and returns it """
+        if self.filter_notifications:
+            self.update_filter_notifications()
+        else:
+            self._update()
         return cv2.imread(self.CURRENT_SCREEN)
 
     def update_filter_notifications(self, retries: int = 5, delay: float = 1.0,
-                                    green_mask=[200, 400, 100, 300]):
+                                    green_mask: tuple = None, debug: bool = False):
+        if green_mask is None:
+            green_mask = self.green_mask
+
         for attempt in range(retries):
-            self.update()
+            self._update()
             img = self.colour()
 
             # Convert to HSV for better color detection
@@ -107,16 +120,23 @@ class Screen:
             mask = cv2.inRange(hsv, lower_green, upper_green)
             mask[green_mask[2]:green_mask[3], green_mask[0]:green_mask[1]] = 0  # Skip any pictures
 
-            green_pixels = cv2.countNonZero(mask)
-            total_pixels = img.shape[0] * img.shape[1]
+            # Crop to notification area
+            crop = mask[self.green_select[2]:self.green_select[3], self.green_select[0]:self.green_select[1]]
+
+            green_pixels = cv2.countNonZero(crop)
+            total_pixels = crop.shape[0] * crop.shape[1]
             green_ratio = green_pixels / total_pixels
 
-            self.logger.debug(f"[Screen] Attempt {attempt + 1}: Green coverage = {green_ratio:.6f}")
+            if debug:
+                self.logger.debug(f"[Screen] Attempt {attempt + 1}: Green coverage = {green_ratio:.6f}")
+                cv2.imshow("Green locations", crop)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
 
             if green_ratio < 0.001:  # Less than 0.1% green pixels → accept
                 return True
             else:
-                self.logger.debug("[Screen] Green detected, retrying...")
+                self.logger.debug("[Screen] Notification detected, retrying...")
                 time.sleep(delay)
 
         self.logger.warning(f"[Screen] Failed to get clean screen after {retries} retries.")
@@ -138,9 +158,6 @@ class Screen:
         if max_val >= threshold:
             return max_loc, max_val
         return None
-
-    import cv2
-    import numpy as np
 
     def find_all_images(self, template_path: str, threshold: float = THRESHOLD, max_results: int = 10):
         """
