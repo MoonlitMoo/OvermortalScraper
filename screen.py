@@ -75,6 +75,23 @@ class Screen:
         bool
             True if successful, False if green couldn't be avoided after retries.
         """
+        if self.update_filter_notifications(retries, delay, green_mask):
+            if name is None:
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                name = f"screenshot_{timestamp}.png"
+            cv2.imwrite(f'screencaps/{name}', self.colour())
+            self.logger.debug(f"[Screen] Saved clean screenshot: {name}")
+        return False
+
+    def update(self):
+        """ Updates saved screen image """
+        subprocess.run(["adb", "shell", "screencap", "-p", "/sdcard/screen.png"], stdout=subprocess.DEVNULL)
+        subprocess.run(["adb", "pull", "/sdcard/screen.png", self.CURRENT_SCREEN],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return cv2.imread(self.CURRENT_SCREEN)
+
+    def update_filter_notifications(self, retries: int = 5, delay: float = 1.0,
+                                    green_mask=[200, 400, 100, 300]):
         for attempt in range(retries):
             self.update()
             img = self.colour()
@@ -97,25 +114,13 @@ class Screen:
             self.logger.debug(f"[Screen] Attempt {attempt + 1}: Green coverage = {green_ratio:.6f}")
 
             if green_ratio < 0.001:  # Less than 0.1% green pixels → accept
-                if name is None:
-                    timestamp = time.strftime("%Y%m%d_%H%M%S")
-                    name = f"screenshot_{timestamp}.png"
-                cv2.imwrite(f'screencaps/{name}', img)
-                self.logger.debug(f"[Screen] Saved clean screenshot: {name}")
                 return True
             else:
                 self.logger.debug("[Screen] Green detected, retrying...")
                 time.sleep(delay)
 
-        self.logger.warning("[Screen] Failed to get clean screenshot after retries.")
+        self.logger.warning(f"[Screen] Failed to get clean screen after {retries} retries.")
         return False
-
-    def update(self):
-        """ Updates saved screen image """
-        subprocess.run(["adb", "shell", "screencap", "-p", "/sdcard/screen.png"], stdout=subprocess.DEVNULL)
-        subprocess.run(["adb", "pull", "/sdcard/screen.png", self.CURRENT_SCREEN],
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return cv2.imread(self.CURRENT_SCREEN)
 
     def _load_template_image(self, template_path):
         img = cv2.imread(template_path)
