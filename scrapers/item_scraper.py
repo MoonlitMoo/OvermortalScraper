@@ -90,7 +90,7 @@ class ItemScraper:
         """ Saves the current item. """
         # 4. Screenshot weapon top
         self.screen.swipe_up(700, 300)
-        self.screen.capture_filter_notifications(name=f"{save_name}_item{number}_t.png")
+        self.screen.capture_filter_notifications(name=f"{save_name}_item{number}_t.png", green_mask=[200, 400, 100, 300])
         time.sleep(0.25)
 
         # 5. Swipe up
@@ -98,7 +98,7 @@ class ItemScraper:
         time.sleep(0.25)
 
         # 6. Screenshot weapon bottom
-        self.screen.capture_filter_notifications(name=f"{save_name}_item{number}_b.png")
+        self.screen.capture_filter_notifications(name=f"{save_name}_item{number}_b.png", green_mask=[200, 400, 100, 300])
         time.sleep(0.25)
 
     def save_abilities(self, ability_type):
@@ -113,7 +113,7 @@ class ItemScraper:
                 logger.debug(f"Selecting item {i} at {x}, {y}")
                 self.screen.tap(x, y)
                 time.sleep(0.5)
-                self.screen.capture_filter_notifications(f"ability_{ability_type}_item{i}.png")
+                self.screen.capture_filter_notifications(f"ability_{ability_type}_item{i}.png", green_mask=[200, 400, 100, 300])
                 logger.debug(f"Exiting ability screen")
                 self.screen.tap(500, 1700)
                 time.sleep(0.5)
