@@ -2,7 +2,7 @@ import cv2
 
 from screen import Screen
 
-screen = Screen()
+screen = Screen(None)
 OUTPUT_PATH = 'extracted.png'
 
 
