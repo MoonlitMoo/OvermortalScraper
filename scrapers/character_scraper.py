@@ -1,17 +1,16 @@
 import json
-import os
 import time
 
 import cv2
 import numpy as np
 
-from image_functions import similar_images, stitch_images, locate_area
 
-os.environ["BOT_LOG_LEVEL"] = "DEBUG"
+# os.environ["BOT_LOG_LEVEL"] = "DEBUG"
 
 from log import logger
-from scrapers.screenshot_processor import ScreenshotProcesser, parse_text_number
 from screen import Screen
+from image_functions import similar_images, stitch_images, locate_area
+from scrapers.screenshot_processor import ScreenshotProcesser, parse_text_number
 
 
 class CharacterScraper:
@@ -88,7 +87,7 @@ class CharacterScraper:
         logger.debug(f"Saved full scroll region as {name}")
 
     def get_value(self, template_path: str, screenshot_path: str, x_offset: int) -> float:
-        """ Takes an image of the description and uses the location to find the corresponding enemy value.
+        """ Takes an image of the description and uses the location to find the corresponding value.
 
         Parameters
         ----------
@@ -116,10 +115,10 @@ class CharacterScraper:
         box_y_offset = -40
 
         # Find location
-        full_img = cv2.cvtColor(cv2.imread(screenshot_path), cv2.COLOR_BGR2GRAY)
+        full_img = cv2.imread(screenshot_path)
         template_img = cv2.cvtColor(cv2.imread(f'resources/character_scraper/{template_path}.png'), cv2.COLOR_BGR2GRAY)
 
-        text_area = locate_area(full_img, template_img, 0.9)
+        text_area = locate_area(cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY), template_img, 0.9)
         if text_area is None:
             logger.debug("Couldn't find the text during get_value")
             return None
@@ -129,9 +128,8 @@ class CharacterScraper:
         start_y = int(centre_y + box_y_offset)
         start_x = int(text_area[0] + x_offset)
         search_area = (start_x, start_x + box_width, start_y - int(box_height / 2), start_y + int(box_height / 2))
-
         # Grab the value
-        value = self.processer.extract_text_from_area(self.screen.colour(), area=search_area, psm=7,
+        value = self.processer.extract_text_from_area(full_img, area=search_area, psm=7,
                                                       thresholding=False, faint_text=False)
         try:
             return parse_text_number(value)
@@ -152,15 +150,9 @@ class CharacterScraper:
                'field', 'samsara', 'divinity', 'miniworld']
         x_offset = 220 if self.own_character else 500
 
-        _iter = 0
-        while not self.screen.find("character_scraper/br_state") and _iter < 5:
-            _iter += 1
+        if not self.screen.find("character_scraper/br_state"):
             self.screen.tap(800, 1800)
-            time.sleep(0.5)
-
-        if _iter >= 5:
-            logger.warning(f"Failed to get to BR stats after {_iter} attempts")
-            return {}
+            self.screen.wait_for_state("../character_scraper/br_state")
 
         self.dynamic_scroll_capture("tmp/br_scrollshot.png", (820, 1300, 820, 1100))
 
@@ -201,20 +193,16 @@ class CharacterScraper:
                'projection_resist_taoist_dmg']
         x_offset = 280 if self.own_character else 580
 
-        _iter = 0
-        while not self.screen.find("character_scraper/stat_state") and _iter < 5:
-            _iter += 1
+        if not self.screen.find("character_scraper/stat_state"):
             self.screen.tap(1000, 1800)
-            time.sleep(0.5)
+            self.screen.wait_for_state("../character_scraper/stat_state")
 
-        if _iter >= 5:
-            logger.warning(f"Failed to get to stats after {_iter} attempts")
-            return {}
+        self.dynamic_scroll_capture("tmp/stat_scrollshot.png", (640, 1300, 640, 1100))
 
         # For each identifier (in order)
         values = {}
         for i in ids:
-            val = self.get_value(f"character_scraper/stats/{i}", x_offset, 640)
+            val = self.get_value(f"stats/{i}", f"tmp/stat_scrollshot.png", x_offset)
             if not val:
                 logger.debug(f"No value for stat {i}")
                 values[i] = 0
@@ -236,8 +224,8 @@ class CharacterScraper:
             full_stats.update(self.scrape_br_stats())
             logger.info("Collected BR values")
             # Sweep through all the compare STAT values
-            # full_stats.update(self.scrape_stat_stats())
-            # logger.info("Collected stat values")
+            full_stats.update(self.scrape_stat_stats())
+            logger.info("Collected stat values")
             # Compile into a database.
         except Exception as e:
             self.screen.back()
@@ -251,7 +239,7 @@ with open('moonlitmoo.json', 'r') as file:
 
 times = []
 error = []
-for i in range(1):
+for i in range(10):
     s_time = time.perf_counter()
     stats = CharacterScraper(own_character=True).scrape()
     times.append(time.perf_counter() - s_time)
