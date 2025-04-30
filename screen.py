@@ -325,7 +325,6 @@ class Screen:
         """
         cmd = f"adb shell input swipe {x1} {y1} {x2} {y2} {duration_ms}"
         subprocess.run(cmd.split(), check=True)
-        time.sleep(duration_ms / 1000 + 0.2)
 
     def swipe_up(self, amount: int = 300, duration_ms: int = 300):
         width, height = self.dimensions

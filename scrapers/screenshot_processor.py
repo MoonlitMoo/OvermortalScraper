@@ -46,7 +46,7 @@ class ScreenshotProcesser:
         pass
 
     def extract_text_from_area(self, img: str | np.ndarray, area: tuple, psm: int = 6, thresholding: bool = True,
-                               dilate: bool = False, debug: bool = False) -> str:
+                               faint_text: bool = False, debug: bool = False) -> str:
         """
         Extract text from a specific rectangular area of an image.
 
@@ -60,8 +60,8 @@ class ScreenshotProcesser:
             Page Segmentation Mode for Tesseract (default 6 = block of text).
         thresholding : bool, optional
             Whether to apply thresholding before OCR (default True).
-        dilate : bool, optional
-            Whether to apply dilation before OCR (default True)
+        faint_text : bool, optional
+            Whether to apply processing to assist in detecting faint text
         debug : bool, optional
             To show the selected image / area
 
@@ -81,15 +81,15 @@ class ScreenshotProcesser:
         crop = img[y1:y2, x1:x2]
 
         # Preprocess
-        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
-        if thresholding:
-            _, proc = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
-        else:
-            proc = gray
+        proc = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
 
-        if dilate:
-            kernel = np.ones((2, 2), np.uint8)
-            proc = cv2.dilate(proc, kernel, iterations=1)
+        if faint_text:
+            # Apply CLAHE (adaptive contrast enhancement)
+            clahe = cv2.createCLAHE()
+            proc = clahe.apply(proc)
+
+        if thresholding:
+            _, proc = cv2.threshold(proc, 150, 255, cv2.THRESH_BINARY)
 
         if debug:
             cv2.imshow("OCR Preprocess", proc)

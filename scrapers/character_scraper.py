@@ -1,7 +1,10 @@
+import json
 import os
 import time
 
-os.environ["BOT_LOG_LEVEL"] = "DEBUG"
+import numpy as np
+
+# os.environ["BOT_LOG_LEVEL"] = "DEBUG"
 
 from log import logger
 from scrapers.screenshot_processor import ScreenshotProcesser, parse_text_number
@@ -51,7 +54,7 @@ class CharacterScraper:
             _iter += 1
             self.screen.swipe(scroll_x, 1200, scroll_x, 1100)
             time.sleep(0.2)
-            logger.debug(f"Scolled down to find {template_path}")
+            logger.debug(f"Scrolled down to find {template_path}")
             text_area = self.screen.find_area(template_path)
 
         if text_area is None:
@@ -63,7 +66,8 @@ class CharacterScraper:
         start_x = int(text_area[0] + x_offset)
         search_area = (start_x, start_x + box_width, start_y - int(box_height / 2), start_y + int(box_height / 2))
         # Grab the value
-        value = self.processer.extract_text_from_area(self.screen.colour(), area=search_area, psm=7, debug=True)
+        value = self.processer.extract_text_from_area(self.screen.colour(), area=search_area, psm=7,
+                                                      thresholding=False, faint_text=False)
         try:
             return parse_text_number(value)
         except ValueError:
@@ -154,6 +158,7 @@ class CharacterScraper:
 
     def scrape(self):
         # Open screen by clicking the button
+        full_stats = {}
         try:
             self.screen.tap_button("../character_scraper/compare_button")
             logger.info("Opened Stats")
@@ -161,16 +166,43 @@ class CharacterScraper:
             self.screen.filter_notifications = True
             self.screen.green_select = (590, 1080, 700, 900)
             # Sweep through all the compare BR value
-            # self.scrape_br_stats()
-            # logger.info("Collected BR values")
+            full_stats.update(self.scrape_br_stats())
+            logger.info("Collected BR values")
             # Sweep through all the compare STAT values
-            self.scrape_stat_stats()
+            full_stats.update(self.scrape_stat_stats())
             logger.info("Collected stat values")
             # Compile into a database.
         except Exception as e:
             self.screen.back()
             raise e
         self.screen.back()
+        return full_stats
 
 
-CharacterScraper(own_character=False).scrape()
+with open('moonlitmoo.json', 'r') as file:
+    exact = json.load(file)
+
+times = []
+error = []
+for i in range(10):
+    s_time = time.perf_counter()
+    stats = CharacterScraper(own_character=True).scrape()
+    times.append(time.perf_counter() - s_time)
+    # print("Found stats:")
+    # for k, v in stats.items():
+    #     print(f"\t{k}: {v:.3e}")
+
+    print("Differing items")
+    wrong = 0
+    for k, v in stats.items():
+        if exact[k] == 0 and v != exact[k]:
+            wrong += 1
+            print(f"Found {k}: {v}, previously {exact[k]}")
+        elif exact[k] != 0 and abs(v / exact[k] - 1) > 0.01:  # Check within 1%
+            wrong += 1
+            print(f"Found {k}: {v}, previously {exact[k]} off by {v / exact[k] * 100:3.1f}%")
+    print(f"Test {i} incorrect {wrong / len(stats) * 100:3.1f}%")
+    error.append(wrong / len(stats))
+
+print(f"Average error {np.average(error) * 100:3.1f}% with std {np.std(error)*100:1.2f}%")
+print(f"Average time {np.average(times):3.1f}s with std {np.std(error):2.2f}s%")
