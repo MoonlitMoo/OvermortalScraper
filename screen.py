@@ -24,7 +24,7 @@ class Screen:
 
     dimensions = None, None
 
-    def __init__(self, logger):
+    def __init__(self, logger, bluestacks_host: str = "127.0.0.1:5555"):
         self.logger = logger
         self.filter_notifications = False
         self.green_mask = (0, 0, 0, 0)
@@ -33,6 +33,23 @@ class Screen:
         self.update()
         y, x, _ = cv2.imread(self.CURRENT_SCREEN).shape
         self.dimensions = x, y
+
+        try:
+            # Check connected devices
+            result = subprocess.run(["adb", "devices"], capture_output=True, text=True)
+            devices_output = result.stdout
+
+            if bluestacks_host in devices_output:
+                return
+
+            print("BlueStacks not found in connected devices. Attempting to connect...")
+            connect_result = subprocess.run(["adb", "connect", bluestacks_host], capture_output=True, text=True)
+            if "connected" in connect_result.stdout.lower():
+                print("Successfully connected to BlueStacks.")
+            else:
+                print(f"Failed to connect: {connect_result.stdout.strip()}")
+        except Exception as e:
+            print(f"Error while checking/connecting ADB: {e}")
 
     def colour(self):
         """ Returns current screen image in colour. """
