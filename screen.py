@@ -5,6 +5,8 @@ from typing import List
 import cv2
 import numpy as np
 
+from image_functions import locate_image
+
 
 class StateNotReached(Exception):
     pass
@@ -15,7 +17,7 @@ class ActionNotPerformed(Exception):
 
 
 class Screen:
-    CURRENT_SCREEN = "./screen.png"
+    CURRENT_SCREEN = "./tmp/screen.png"
     THRESHOLD = 0.9
     TIMEOUT = 15
     POLL_INTERVAL = 0.1
@@ -153,11 +155,7 @@ class Screen:
         self.update()
         screen = self.grayscale()
         template = cv2.cvtColor(self._load_template_image(template_path), cv2.COLOR_BGR2GRAY)
-        res = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
-        _, max_val, _, max_loc = cv2.minMaxLoc(res)
-        if max_val >= threshold:
-            return max_loc, max_val
-        return None
+        return locate_image(screen, template, threshold)
 
     def find_all_images(self, template_path: str, threshold: float = THRESHOLD, max_results: int = 10):
         """
