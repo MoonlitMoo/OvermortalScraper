@@ -128,6 +128,7 @@ class CharacterScraper:
         start_y = int(centre_y + box_y_offset)
         start_x = int(text_area[0] + x_offset)
         search_area = (start_x, start_x + box_width, start_y - int(box_height / 2), start_y + int(box_height / 2))
+
         # Grab the value
         value = self.processer.extract_text_from_area(full_img, area=search_area, psm=7,
                                                       thresholding=False, faint_text=False)
@@ -159,6 +160,7 @@ class CharacterScraper:
         # For each identifier (in order)
         values = {}
         for i in ids:
+            logger.debug(f"Searching for BR stat {i}")
             val = self.get_value(f"br/{i}", "tmp/br_scrollshot.png", x_offset)
             if not val:
                 logger.debug(f"No value for BR stat {i}")
@@ -202,6 +204,7 @@ class CharacterScraper:
         # For each identifier (in order)
         values = {}
         for i in ids:
+            logger.debug(f"Searching for stat {i}")
             val = self.get_value(f"stats/{i}", f"tmp/stat_scrollshot.png", x_offset)
             if not val:
                 logger.debug(f"No value for stat {i}")
@@ -255,7 +258,7 @@ for i in range(10):
             print(f"Found {k}: {v}, previously {exact[k]}")
         elif exact[k] != 0 and abs(v / exact[k] - 1) > 0.01:  # Check within 1%
             wrong += 1
-            print(f"Found {k}: {v}, previously {exact[k]} off by {v / exact[k] * 100:3.1f}%")
+            print(f"Found {k}: {v}, previously {exact[k]} off by {v / exact[k] * 100 - 100:3.1f}%")
     print(f"Test {i} incorrect {wrong / len(stats) * 100:3.1f}%")
     error.append(wrong / len(stats))
 

@@ -30,10 +30,6 @@ class Screen:
         self.green_mask = (0, 0, 0, 0)
         self.green_select = (0, 1080, 700, 900)
 
-        self.update()
-        y, x, _ = cv2.imread(self.CURRENT_SCREEN).shape
-        self.dimensions = x, y
-
         try:
             # Check connected devices
             result = subprocess.run(["adb", "devices"], capture_output=True, text=True)
@@ -50,6 +46,10 @@ class Screen:
                 print(f"Failed to connect: {connect_result.stdout.strip()}")
         except Exception as e:
             print(f"Error while checking/connecting ADB: {e}")
+
+        self.update()
+        y, x, _ = cv2.imread(self.CURRENT_SCREEN).shape
+        self.dimensions = x, y
 
     def colour(self):
         """ Returns current screen image in colour. """

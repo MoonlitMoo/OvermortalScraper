@@ -2,7 +2,7 @@ import re
 
 import cv2
 import numpy as np
-from pytesseract import pytesseract
+import easyocr
 
 
 def parse_text_number(text: str) -> float:
@@ -43,7 +43,7 @@ def parse_text_number(text: str) -> float:
 class ScreenshotProcesser:
 
     def __init__(self):
-        pass
+        self.reader = easyocr.Reader(['en'])
 
     def extract_text_from_area(self, img: str | np.ndarray, area: tuple, psm: int = 6, thresholding: bool = True,
                                faint_text: bool = False, debug: bool = False) -> str:
@@ -84,9 +84,8 @@ class ScreenshotProcesser:
         proc = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
 
         if faint_text:
-            # Apply CLAHE (adaptive contrast enhancement)
-            clahe = cv2.createCLAHE()
-            proc = clahe.apply(proc)
+            norm_proc = np.zeros((proc.shape[0], proc.shape[1]))
+            proc = cv2.normalize(proc, norm_proc, 0, 255, cv2.NORM_MINMAX)
 
         if thresholding:
             _, proc = cv2.threshold(proc, 150, 255, cv2.THRESH_BINARY)
@@ -98,9 +97,10 @@ class ScreenshotProcesser:
 
         # OCR config
         custom_config = f'--oem 3 --psm {psm}'
-        text = pytesseract.image_to_string(proc, config=custom_config)
+        # text = pytesseract.image_to_string(proc, config=custom_config)
+        text = self.reader.readtext(proc, detail=0)
 
-        return text.strip()
+        return text[0].strip() if text else ''
 
     def extract_text_from_lines(self, image_path, first_line, line_height, num_lines, psm, thresholding: bool = True):
         lines = []
