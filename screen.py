@@ -116,14 +116,13 @@ class Screen:
             _, max_val, _, max_loc = cv2.minMaxLoc(result)
             return max_loc[1] if max_val > 0.9 else -1
 
-        screenshots = []
+        stitched = None
         prev_img = None
 
         for i in range(max_shots):
             # Get the screenshot
             self.update()
             img = self.colour()
-            self.logger.debug(f"Loop {i}")
 
             # Trim if we are sub-selecting a region
             if crop_area:
@@ -135,27 +134,15 @@ class Screen:
                 if similar_images(prev_img, img):
                     self.logger.debug("No change detected, stopping.")
                     break
-                cutoff = find_overlap_offset(prev_img, img)
-                if overlap == -1:
-                    self.logger.debug("Could not find good overlap, stopping.")
-                    break
+                stitched = stitch_images(stitched, img, overlap, offset)
             else:
-                cutoff = 0
+                stitched = img
 
-            screenshots.append(img[cutoff:])
             prev_img = img
             self.swipe(*scroll_params)
             time.sleep(.2)
 
-        if len(screenshots) == 1:
-            cv2.imwrite(file, screenshots[0])
-            return
-
-        stitched = screenshots[0][:-full_offset]
-        for img in screenshots[1:-1]:
-            stitched = np.vstack((stitched, img[:-full_offset]))
-
-        cv2.imwrite(file, np.vstack((stitched, screenshots[-1])))
+        cv2.imwrite(file, stitched)
 
     def _update(self):
         subprocess.run(["adb", "shell", "screencap", "-p", "/sdcard/screen.png"], stdout=subprocess.DEVNULL)
