@@ -1,9 +1,9 @@
 import json
+import os
 import time
 
 import cv2
 import numpy as np
-
 
 # os.environ["BOT_LOG_LEVEL"] = "DEBUG"
 
@@ -20,71 +20,6 @@ class CharacterScraper:
         self.screen = Screen(logger)
         self.processer = ScreenshotProcesser()
         self.own_character = own_character
-
-    def dynamic_scroll_capture(self, name: str, scroll_params, max_scrolls=20, debug: bool = False):
-        """
-        Automatically scroll through a panel, capture screenshots, and stitch them.
-
-        Parameters
-        ----------
-        name : str
-            What to save the stitched image as
-        scroll_params : tuple
-            The (x1, x2, y1, y2, duration) values to define the scroll
-        max_scrolls : int
-            Safety cap for infinite scrolling bugs.
-        debug : bool
-            Show debug plots during running
-
-        Returns
-        -------
-        ndarray
-            The stitched image.
-        """
-        stitched = None
-        previous_crop = None
-        scroll_count = 0
-
-        while scroll_count < max_scrolls:
-            # Update and gety the new image
-            self.screen.update()
-            full_img = self.screen.colour()
-
-            x1, x2, y1, y2 = (0, 1080, 800, 1700)
-            crop = full_img[y1:y2, x1:x2]
-            overlap, offset = 100, 250
-
-            if previous_crop is not None and similar_images(previous_crop, crop):
-                logger.debug("Stopping scroll: new region is visually the same as previous.")
-                break
-
-            if debug and stitched is not None:
-                scale = 0.5  # 50% size
-                img = cv2.resize(stitched, None, fx=scale, fy=scale)
-                cv2.imshow("Pre-stitch", img)
-
-            # Stitch current crop
-            if stitched is None:
-                stitched = crop
-            else:
-                stitched = stitch_images(stitched, crop, overlap, offset)
-
-            if debug:
-                scale = 0.5  # 50% size
-                img = cv2.resize(stitched, None, fx=scale, fy=scale)
-                cv2.imshow("Post-stitch", img)
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
-
-            previous_crop = crop
-            scroll_count += 1
-
-            logger.debug(f"Captured scroll segment {scroll_count}")
-            self.screen.swipe(*scroll_params)
-            time.sleep(0.2)
-
-        cv2.imwrite(name, stitched)
-        logger.debug(f"Saved full scroll region as {name}")
 
     def get_value(self, template_path: str, screenshot_path: str, x_offset: int) -> float:
         """ Takes an image of the description and uses the location to find the corresponding value.
@@ -130,8 +65,8 @@ class CharacterScraper:
         search_area = (start_x, start_x + box_width, start_y - int(box_height / 2), start_y + int(box_height / 2))
 
         # Grab the value
-        value = self.processer.extract_text_from_area(full_img, area=search_area, psm=7,
-                                                      thresholding=False, faint_text=False)
+        value = self.processer.extract_text_from_area(full_img, area=search_area, thresholding=False, faint_text=False)
+
         try:
             return parse_text_number(value)
         except ValueError:
@@ -155,8 +90,9 @@ class CharacterScraper:
             self.screen.tap(800, 1800)
             self.screen.wait_for_state("../character_scraper/br_state")
 
-        self.dynamic_scroll_capture("tmp/br_scrollshot.png", (820, 1300, 820, 1100))
-
+        # self.dynamic_scroll_capture("tmp/br_scrollshot.png", (820, 1300, 820, 1100))
+        self.screen.capture_scrollshot("tmp/br_scrollshot.png", 200, 250,
+                                       (820, 1300, 820, 1200), (0, 1080, 800, 1700))
         # For each identifier (in order)
         values = {}
         for i in ids:
@@ -199,7 +135,8 @@ class CharacterScraper:
             self.screen.tap(1000, 1800)
             self.screen.wait_for_state("../character_scraper/stat_state")
 
-        self.dynamic_scroll_capture("tmp/stat_scrollshot.png", (640, 1300, 640, 1100))
+        self.screen.capture_scrollshot("tmp/stat_scrollshot.png", 200, 250,
+                                       (640, 1300, 640, 1200), (0, 1080, 800, 1700))
 
         # For each identifier (in order)
         values = {}
@@ -222,7 +159,7 @@ class CharacterScraper:
             logger.info("Opened Stats")
             # Set screen masking and filtering
             self.screen.filter_notifications = True
-            self.screen.green_select = (590, 1080, 700, 900)
+            self.screen.green_select = (590, 1080, 800, 900)
             # Sweep through all the compare BR value
             full_stats.update(self.scrape_br_stats())
             logger.info("Collected BR values")

@@ -5,7 +5,7 @@ from typing import List
 import cv2
 import numpy as np
 
-from image_functions import locate_image
+from image_functions import locate_image, stitch_images, similar_images
 
 
 class StateNotReached(Exception):
@@ -105,6 +105,57 @@ class Screen:
             cv2.imwrite(f'screencaps/{name}', self.colour())
             self.logger.debug(f"[Screen] Saved clean screenshot: {name}")
         return False
+
+    def capture_scrollshot(self, file: str, overlap: int, offset: int, scroll_params, crop_area=None, max_shots: int = 50):
+        full_offset = offset + overlap
+
+        def find_overlap_offset(img1: np.ndarray, img2: np.ndarray) -> int:
+            template = img1[-full_offset:-offset]
+
+            result = cv2.matchTemplate(img2, template, cv2.TM_CCOEFF_NORMED)
+            _, max_val, _, max_loc = cv2.minMaxLoc(result)
+            return max_loc[1] if max_val > 0.9 else -1
+
+        screenshots = []
+        prev_img = None
+
+        for i in range(max_shots):
+            # Get the screenshot
+            self.update()
+            img = self.colour()
+            self.logger.debug(f"Loop {i}")
+
+            # Trim if we are sub-selecting a region
+            if crop_area:
+                x1, x2, y1, y2 = crop_area
+                img = img[y1:y2, x1:x2]
+
+            # Find if the two are the same
+            if prev_img is not None:
+                if similar_images(prev_img, img):
+                    self.logger.debug("No change detected, stopping.")
+                    break
+                cutoff = find_overlap_offset(prev_img, img)
+                if overlap == -1:
+                    self.logger.debug("Could not find good overlap, stopping.")
+                    break
+            else:
+                cutoff = 0
+
+            screenshots.append(img[cutoff:])
+            prev_img = img
+            self.swipe(*scroll_params)
+            time.sleep(.2)
+
+        if len(screenshots) == 1:
+            cv2.imwrite(file, screenshots[0])
+            return
+
+        stitched = screenshots[0][:-full_offset]
+        for img in screenshots[1:-1]:
+            stitched = np.vstack((stitched, img[:-full_offset]))
+
+        cv2.imwrite(file, np.vstack((stitched, screenshots[-1])))
 
     def _update(self):
         subprocess.run(["adb", "shell", "screencap", "-p", "/sdcard/screen.png"], stdout=subprocess.DEVNULL)
