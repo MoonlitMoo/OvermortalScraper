@@ -5,7 +5,7 @@ import time
 import cv2
 import numpy as np
 
-# os.environ["BOT_LOG_LEVEL"] = "DEBUG"
+os.environ["BOT_LOG_LEVEL"] = "DEBUG"
 
 from log import logger
 from screen import Screen
@@ -18,60 +18,47 @@ class CharacterScraper:
 
     def __init__(self, own_character=False):
         self.screen = Screen(logger)
-        self.processer = ScreenshotProcesser()
+        self.processor = ScreenshotProcesser()
         self.own_character = own_character
 
-    def get_value(self, template_path: str, screenshot_path: str, x_offset: int) -> float:
-        """ Takes an image of the description and uses the location to find the corresponding value.
-
-        Parameters
-        ----------
-        template_path : str
-            The text image to search for
-        screenshot_path : str
-            The image to search text within
-        x_offset : int
-            The pixel offset between left side of image and start of search box.
-
-        Returns
-        -------
-        float
-            Parsed value for the text in the image.
-
-        Notes
-        -----
-        Box for numbers are the same size and y-offset for each stat, so we set it here.
-        X offset between image and value is different per page, so taken as an argument.
-        Try and find the text area which we know exactly relative to the value, so we can set the search value relative.
-        Then we try parse the value in the image, setting to 0 if none found.
-        """
-        box_width = 230
-        box_height = 50
-        box_y_offset = -40
-
+    def get_start_loc(self, screenshot_path, template_path, x_offset):
         # Find location
         full_img = cv2.imread(screenshot_path)
         template_img = cv2.cvtColor(cv2.imread(f'resources/character_scraper/{template_path}.png'), cv2.COLOR_BGR2GRAY)
 
         text_area = locate_area(cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY), template_img, 0.9)
         if text_area is None:
-            logger.debug("Couldn't find the text during get_value")
             return None
 
-        # The search area should start at text_x + x_offset, with y being the centre of text image + y offset
+        box_y_offset = -40
+
         centre_y = (text_area[2] + text_area[3]) / 2
         start_y = int(centre_y + box_y_offset)
         start_x = int(text_area[0] + x_offset)
+
+        return start_x, start_y
+
+    def get_value(self, screenshot_path, start_x, start_y, debug=False):
+        box_width = 230
+        box_height = 50
+
         search_area = (start_x, start_x + box_width, start_y - int(box_height / 2), start_y + int(box_height / 2))
 
-        # Grab the value
-        value = self.processer.extract_text_from_area(full_img, area=search_area, thresholding=False, faint_text=False)
+        if debug:
+            img = cv2.imread(screenshot_path)
+            cv2.rectangle(img, (start_x, start_y - int(box_height / 2)),
+                          (start_x + box_width, start_y + int(box_height / 2)), (0, 255, 0), 2)
+            clip_min, clip_max = max(search_area[2] - 20, 0), min(search_area[3] + 20, img.shape[0])
+            cv2.imshow("Search Area", img[clip_min:clip_max])
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
 
+        value = self.processor.extract_text_from_area(screenshot_path, area=search_area, thresholding=False,
+                                                      faint_text=False)
         try:
             return parse_text_number(value)
         except ValueError:
-            logger.debug(f"Skipped parsing {value}")
-            return None
+            return 0
 
     def scrape_br_stats(self):
         """ Scrapes the BR stat page for all the values, returning them in a dictionary.
@@ -90,20 +77,20 @@ class CharacterScraper:
             self.screen.tap(800, 1800)
             self.screen.wait_for_state("../character_scraper/br_state")
 
-        # self.dynamic_scroll_capture("tmp/br_scrollshot.png", (820, 1300, 820, 1100))
-        self.screen.capture_scrollshot("tmp/br_scrollshot.png", 200, 250,
+        path = "tmp/br_scrollshot.png"
+        self.screen.capture_scrollshot(path, 200, 250,
                                        (820, 1300, 820, 1200), (0, 1080, 800, 1700))
+
+        x, y_origin = self.get_start_loc(path, 'br/character', x_offset)
         # For each identifier (in order)
         values = {}
-        for i in ids:
-            logger.debug(f"Searching for BR stat {i}")
-            val = self.get_value(f"br/{i}", "tmp/br_scrollshot.png", x_offset)
+        for idx, i in enumerate(ids):
+            y = y_origin + idx * 124
+            val = self.get_value(path, x, y)
             if not val:
-                logger.debug(f"No value for BR stat {i}")
                 values[i] = 0
             else:
                 values[i] = val
-                logger.debug(f"Retrieved BR stat {i} = {val:.3e}")
         return values
 
     def scrape_stat_stats(self):
@@ -135,20 +122,23 @@ class CharacterScraper:
             self.screen.tap(1000, 1800)
             self.screen.wait_for_state("../character_scraper/stat_state")
 
-        self.screen.capture_scrollshot("tmp/stat_scrollshot.png", 200, 250,
+        path = "tmp/stat_scrollshot.png"
+        self.screen.capture_scrollshot(path, 200, 250,
                                        (640, 1300, 640, 1200), (0, 1080, 800, 1700))
 
+        x, y_origin = self.get_start_loc(path, 'stats/hp', x_offset)
         # For each identifier (in order)
         values = {}
-        for i in ids:
-            logger.debug(f"Searching for stat {i}")
-            val = self.get_value(f"stats/{i}", f"tmp/stat_scrollshot.png", x_offset)
+        for idx, i in enumerate(ids):
+            # Update start value every 5 items
+            if idx % 8 == 0:
+                x, y_origin = self.get_start_loc(path, f'stats/{i}', x_offset)
+            y = y_origin + idx % 8 * 122
+            val = self.get_value(path, x, y)
             if not val:
-                logger.debug(f"No value for stat {i}")
                 values[i] = 0
             else:
                 values[i] = val
-                logger.debug(f"Retrieved stat {i} = {val:.3e}")
         return values
 
     def scrape(self):
