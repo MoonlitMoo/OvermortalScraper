@@ -45,7 +45,7 @@ class ScreenshotProcesser:
     def __init__(self):
         self.reader = easyocr.Reader(['en'])
 
-    def extract_text_from_area(self, img: str | np.ndarray, area: tuple, psm: int = 6, thresholding: bool = True,
+    def extract_text_from_area(self, img: str | np.ndarray, area: tuple, thresholding: bool = True,
                                faint_text: bool = False, debug: bool = False) -> str:
         """
         Extract text from a specific rectangular area of an image.
@@ -56,8 +56,6 @@ class ScreenshotProcesser:
             Path to the input image file or image itself.
         area : tuple
             (x1, y1, x2, y2) specifying the crop rectangle.
-        psm : int, optional
-            Page Segmentation Mode for Tesseract (default 6 = block of text).
         thresholding : bool, optional
             Whether to apply thresholding before OCR (default True).
         faint_text : bool, optional
@@ -88,16 +86,14 @@ class ScreenshotProcesser:
             proc = cv2.normalize(proc, norm_proc, 0, 255, cv2.NORM_MINMAX)
 
         if thresholding:
-            _, proc = cv2.threshold(proc, 150, 255, cv2.THRESH_BINARY)
+            proc = cv2.adaptiveThreshold(proc, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                         cv2.THRESH_BINARY, 11, 2)
 
         if debug:
             cv2.imshow("OCR Preprocess", proc)
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
-        # OCR config
-        custom_config = f'--oem 3 --psm {psm}'
-        # text = pytesseract.image_to_string(proc, config=custom_config)
         text = self.reader.readtext(proc, detail=0)
 
         return text[0].strip() if text else ''
