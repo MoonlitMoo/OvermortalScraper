@@ -9,7 +9,7 @@ os.environ["BOT_LOG_LEVEL"] = "DEBUG"
 
 from log import logger
 from screen import Screen
-from image_functions import similar_images, stitch_images, locate_area
+from image_functions import locate_area
 from scrapers.screenshot_processor import ScreenshotProcesser, parse_text_number
 
 
@@ -86,7 +86,11 @@ class CharacterScraper:
         values = {}
         for idx, i in enumerate(ids):
             y = y_origin + idx * 124
-            val = self.get_value(path, x, y)
+            try:
+                val = self.get_value(path, x, y)
+            except Exception as e:
+                logger.error(f"Failed to find BR stat {i} at x={x}, y={y}")
+                raise e
             if not val:
                 values[i] = 0
             else:
@@ -129,12 +133,17 @@ class CharacterScraper:
         x, y_origin = self.get_start_loc(path, 'stats/hp', x_offset)
         # For each identifier (in order)
         values = {}
+        n_reset = 6
         for idx, i in enumerate(ids):
-            # Update start value every 5 items
-            if idx % 8 == 0:
+            # Update start value every n_reset items to prevent drift
+            if idx % n_reset == 0:
                 x, y_origin = self.get_start_loc(path, f'stats/{i}', x_offset)
-            y = y_origin + idx % 8 * 122
-            val = self.get_value(path, x, y)
+            y = y_origin + (idx % n_reset) * 122
+            try:
+                val = self.get_value(path, x, y)
+            except Exception as e:
+                logger.error(f"Failed to find general stat {i} at x={x}, y={y}")
+                raise e
             if not val:
                 values[i] = 0
             else:
@@ -157,9 +166,11 @@ class CharacterScraper:
             full_stats.update(self.scrape_stat_stats())
             logger.info("Collected stat values")
             # Compile into a database.
+
         except Exception as e:
             self.screen.back()
             raise e
+        logger.info("Finished scraping character")
         self.screen.back()
         return full_stats
 
