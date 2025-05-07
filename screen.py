@@ -24,7 +24,7 @@ class Screen:
 
     dimensions = None, None
 
-    def __init__(self, logger, bluestacks_host: str = "127.0.0.1:5555"):
+    def __init__(self, logger, bluestacks_host: str = "emulator-5554"):
         self.logger = logger
         self.filter_notifications = False
         self.green_mask = (0, 0, 0, 0)
@@ -107,15 +107,6 @@ class Screen:
         return False
 
     def capture_scrollshot(self, file: str, overlap: int, offset: int, scroll_params, crop_area=None, max_shots: int = 50):
-        full_offset = offset + overlap
-
-        def find_overlap_offset(img1: np.ndarray, img2: np.ndarray) -> int:
-            template = img1[-full_offset:-offset]
-
-            result = cv2.matchTemplate(img2, template, cv2.TM_CCOEFF_NORMED)
-            _, max_val, _, max_loc = cv2.minMaxLoc(result)
-            return max_loc[1] if max_val > 0.9 else -1
-
         stitched = None
         prev_img = None
 
