@@ -1,8 +1,10 @@
 import json
 import os
 import time
+from enum import Enum
 
 import cv2
+import jellyfish
 import numpy as np
 
 os.environ["BOT_LOG_LEVEL"] = "DEBUG"
@@ -11,6 +13,7 @@ from log import logger
 from screen import Screen
 from image_functions import locate_area
 from scrapers.screenshot_processor import ScreenshotProcesser, parse_text_number
+from data_types import *
 
 
 class CharacterScraper:
@@ -62,7 +65,35 @@ class CharacterScraper:
         except ValueError:
             return 0
 
-    def scrape_item(self, x, y, data_enum, use_full_name=False, test_double_path=False):
+    def scrape_item(self, x, y, data_enum, full_match=False, check_double_path=False):
+        """ Scrapes an item for the name and turns it into an enumeration type.
+        First opens it from the character screen.
+        Generally separates out the last word as the name to check for most similar enumeration. Optionally can use full
+        name. Can also check for double path and prefix this to the name.
+
+        Parameters
+        ----------
+        x : int
+            The x pixel coordinate of the item
+        y : int
+            The y pixel coordinate of the item
+        data_enum
+            An enum class the item should belong to
+        full_match : bool, optional
+            Whether to match full name against the enum, or just the last word.
+        check_double_path : bool, optional
+            Whether to check if the item is double path.
+
+        Returns
+        -------
+        item
+            An enum from the given enum class, or None if no matches.
+
+
+        Notes
+        -----
+        If no matching enum is found, a debug image of the item is captured and logger is given a warning.
+        """
         # Select item
         self.screen.tap(x, y)
         time.sleep(0.75)
@@ -71,7 +102,7 @@ class CharacterScraper:
         img = self.screen.update()
         name_bbox = (300, 1000, 250, 420)
         # Get the value
-        if test_double_path:
+        if check_double_path:
             all_text = self.processor.extract_text_from_area(img, name_bbox, all_text=True)
             # Join all the text and rely on enhancement to split off the name
             full_name = ' '.join(all_text).split("+")[0].strip()
@@ -81,7 +112,7 @@ class CharacterScraper:
             full_name = self.processor.extract_text_from_area(img, name_bbox)
             is_double_path = False
         # Trim if we only want the last word
-        if not use_full_name:
+        if not full_match:
             full_name = full_name.split(' ')[-1]
         # Add double path prefix
         if is_double_path:
@@ -98,33 +129,43 @@ class CharacterScraper:
         if item is None:
             # If missed, throw image into debug for later checking
             logger.warning(f"Failed to parse '{full_name}' into a {data_enum}")
-            self.screen.capture(f"tmp/debug/unknown_item_{test_name}.png")
+            self.screen.capture(f"debug/unknown_item_{test_name}.png")
 
         # Return back to main screen
         self.screen.tap(500, 1800)
         time.sleep(0.75)
         return item
 
+    def scrape_identifier(self):
+        pass
+
     def scrape_relics(self):
-        """ Scrapes the relics and curios that a Taoist is using. """
+        """ Scrapes the relics and curios that a Taoist is using.
+        Defines the coordinates for each item and scrapes them individually.
+
+        Returns
+        -------
+        values : dict
+            A label : enum value dict of the 12 scraped items.
+        """
         values = {}
         col1, col2 = 760, 900
         row1, row2, row3 = 500, 625, 700
 
         # Weapon
         logger.debug(f"Getting weapon")
-        values["armour"] = self.scrape_item(col1, row1, Weapon, test_double_path=True)
+        values["armour"] = self.scrape_item(col1, row1, Weapon, check_double_path=True)
         # Armour
         logger.debug(f"Getting armour")
-        values["armour"] = self.scrape_item(col1, row2, Armour, test_double_path=True)
+        values["armour"] = self.scrape_item(col1, row2, Armour, check_double_path=True)
         # Accessory
         logger.debug(f"Getting accessory")
-        values["accessory"] = self.scrape_item(col1, row3, Accessory, test_double_path=True)
+        values["accessory"] = self.scrape_item(col1, row3, Accessory, check_double_path=True)
 
         # Curio
         for i, r in enumerate([row1, row2, row3]):
             logger.debug(f"Getting curio_{i}")
-            values[f"curio_{i}"] = self.scrape_item(col2, r, Curio, use_full_name=True)
+            values[f"curio_{i}"] = self.scrape_item(col2, r, Curio, full_match=True)
 
         # General relics
         i = 0
