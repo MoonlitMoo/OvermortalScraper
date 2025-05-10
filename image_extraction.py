@@ -6,10 +6,13 @@ screen = Screen(None)
 OUTPUT_PATH = 'extracted.png'
 
 
-def draw_grid(grid_size=100, line_color=(0, 255, 0), text_color=(0, 0, 255), thickness=1):
+def draw_grid(grid_size=100, line_color=(0, 255, 0), text_color=(0, 0, 255), thickness=1, file=None):
     """ Draws grid over current captured screenshot. """
     # Load image
-    img = screen.update()
+    if file is None:
+        img = screen.update()
+    else:
+        img = cv2.imread(file)
     height, width = img.shape[:2]
 
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -29,9 +32,9 @@ def draw_grid(grid_size=100, line_color=(0, 255, 0), text_color=(0, 0, 255), thi
     cv2.imwrite("screen-gridded.png", img)
 
 
-def extract_section(x1, x2, y1, y2):
+def extract_section(x1, x2, y1, y2, file=screen.CURRENT_SCREEN):
     """ Extract the section in gray scale. """
-    img = cv2.cvtColor(cv2.imread(screen.CURRENT_SCREEN), cv2.COLOR_BGR2GRAY)
+    img = cv2.cvtColor(cv2.imread(file), cv2.COLOR_BGR2GRAY)
     # Crop the "Event" region (manual pixel coords)
     crop = img[y1:y2, x1:x2]  # Example: img[60:95, 90:150]
     cv2.imwrite(OUTPUT_PATH, crop)
