@@ -267,11 +267,14 @@ class CharacterScraper:
         return values
 
     def scrape(self):
-        # Open screen by clicking the button
         full_stats = {}
+        logger.info("Starting character scrape")
         try:
+            # Get the relic items
+            full_stats.update(self.scrape_relics())
+            logger.info("Collected relic values")
+            # Open compare screen by clicking the button
             self.screen.tap_button("../character_scraper/compare_button")
-            logger.info("Opened Stats")
             # Set screen masking and filtering
             self.screen.filter_notifications = True
             self.screen.green_select = (590, 1080, 800, 900)
@@ -286,7 +289,7 @@ class CharacterScraper:
         except Exception as e:
             self.screen.back()
             raise e
-        logger.info("Finished scraping character")
+        logger.info("Finished character scrape")
         self.screen.back()
         return full_stats
 

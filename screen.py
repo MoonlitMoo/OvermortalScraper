@@ -75,8 +75,10 @@ class Screen:
             timestamp = time.strftime("%Y%m%d_%H%M%S")
             name = f"screenshot_{timestamp}.png"
 
-        cv2.imwrite(f'screencaps/{name}', img)
-        self.logger.info(f"[Screen] Saved screenshot: {name}")
+        if cv2.imwrite(f'screencaps/{name}', img):
+            self.logger.info(f"[Screen] Saved screenshot: {name}")
+        else:
+            self.logger.warning(f"[Screen] Failed to save screenshot: {name}")
 
     def capture_filter_notifications(self, name: str = None, retries: int = 5, delay: float = 1.0,
                                      green_mask=[200, 400, 100, 300]):
