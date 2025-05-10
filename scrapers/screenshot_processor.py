@@ -86,8 +86,7 @@ class ScreenshotProcesser:
             proc = cv2.normalize(proc, norm_proc, 0, 255, cv2.NORM_MINMAX)
 
         if thresholding:
-            proc = cv2.adaptiveThreshold(proc, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                         cv2.THRESH_BINARY, 11, 2)
+            _, proc = cv2.threshold(proc, 70, 255, cv2.THRESH_TRUNC)
 
         if debug:
             cv2.imshow("OCR Preprocess", proc)

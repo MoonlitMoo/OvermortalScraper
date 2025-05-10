@@ -28,6 +28,7 @@ class CharacterScraper:
 
         text_area = locate_area(cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY), template_img, 0.9)
         if text_area is None:
+            logger.debug(f"Failed to get image {template_path}")
             return None
 
         box_y_offset = -40
@@ -53,8 +54,9 @@ class CharacterScraper:
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
-        value = self.processor.extract_text_from_area(screenshot_path, area=search_area, thresholding=False,
-                                                      faint_text=False)
+        value = self.processor.extract_text_from_area(screenshot_path, area=search_area,
+                                                      thresholding=False,
+                                                      faint_text=not self.own_character)
         try:
             return parse_text_number(value)
         except ValueError:
@@ -133,7 +135,7 @@ class CharacterScraper:
         x, y_origin = self.get_start_loc(path, 'stats/hp', x_offset)
         # For each identifier (in order)
         values = {}
-        n_reset = 6
+        n_reset = 5
         for idx, i in enumerate(ids):
             # Update start value every n_reset items to prevent drift
             if idx % n_reset == 0:
