@@ -45,8 +45,8 @@ class ScreenshotProcesser:
     def __init__(self):
         self.reader = easyocr.Reader(['en'])
 
-    def extract_text_from_area(self, img: str | np.ndarray, area: tuple, thresholding: bool = True,
-                               faint_text: bool = False, debug: bool = False) -> str:
+    def extract_text_from_area(self, img: str | np.ndarray, area: tuple, thresholding: bool = False,
+                               faint_text: bool = False, all_text: bool = False, debug: bool = False) -> str:
         """
         Extract text from a specific rectangular area of an image.
 
@@ -60,6 +60,8 @@ class ScreenshotProcesser:
             Whether to apply thresholding before OCR (default True).
         faint_text : bool, optional
             Whether to apply processing to assist in detecting faint text
+        all_text : bool, optional
+            Whether to return all text, or only first text section.
         debug : bool, optional
             To show the selected image / area
 
@@ -94,7 +96,8 @@ class ScreenshotProcesser:
             cv2.destroyAllWindows()
 
         text = self.reader.readtext(proc, detail=0)
-
+        if all_text:
+            return text if text else []
         return text[0].strip() if text else ''
 
     def extract_text_from_lines(self, image_path, first_line, line_height, num_lines, psm, thresholding: bool = True):
