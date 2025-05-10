@@ -45,6 +45,15 @@ class Relic(Enum):
     MASK = "MASK"
     ROPE = "ROPE"
     SOUL_BANNER = "SOUL_BANNER"
+    # SWORDIA DIVINITY
+    CYANCREST = "CYANCREST"
+    # MAGICKA DIVINITY
+    ROBE = "ROBE"
+    UMBRELLA = "UMBRELLA"
+    FLASK = "FLASK"
+    ARMOR = "ARMOR"
+    BLADE = "BLADE"
+    BELLS = "BELLS"
 
 
 class Weapon(Enum):
