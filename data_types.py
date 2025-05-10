@@ -1,0 +1,68 @@
+from enum import Enum
+
+
+class CultivationType(Enum):
+    CORPORIA = "CORPORIA"
+    MAGICKA = "MAGICKA"
+    SWORDIA = "SWORDIA"
+    GHOSTIA = "GHOSTIA"
+
+
+class CultivationLevel(Enum):
+    NOVICE = "NOVICE"
+    CONNECTION = "CONNECTION"
+    FOUNDATION = "FOUNDATION"
+    VIRTUOSO = "VIRTUOSO"
+    NASCENT_SOUL = "NASCENT_SOUL"
+    INCARNATION = "INCARNATION"
+    VOIDBREAK = "VOIDBREAK"
+    WHOLENESS = "WHOLENESS"
+    PERFECTION = "PERFECTION"
+    NIRVANA = "NIRVANA"
+
+
+class Relic(Enum):
+    # Physical
+    BELL = "BELL"
+    CHAIN = "CHAIN"
+    DRUM = "DRUM"
+    PAGODA = "PAGODA"
+    SEAL = "SEAL"
+    # Magical
+    AMULET = "AMULET"
+    BANNER = "BANNER"
+    CAULDRON = "CAULDRON"
+    GOURD = "GOURD"
+    PEARL = "PEARL"
+    MIRROR = "MIRROR"
+    TRIGRAM = "TRIGRAM"
+    # Swordia
+    GREATSWORD = "GREATSWORD"
+    LONGSWORD = "LONGSWORD"
+    # Ghostia
+    ARMGUARD = "ARMGUARD"
+    FLAG = "FLAG"
+    MASK = "MASK"
+    ROPE = "ROPE"
+    SOUL_BANNER = "SOUL_BANNER"
+
+
+class Weapon(Enum):
+    FAN = "FAN"
+    DOUBLE_PATH_FAN = "DOUBLE_PATH_FAN"
+    SWORD = "SWORD"
+    DOUBLE_PATH_SWORD = "DOUBLE_PATH_SWORD"
+
+
+class Armour(Enum):
+    ARMOUR = "ARMOUR"
+    DOUBLE_PATH_ARMOUR = "DOUBLE_PATH_ARMOUR"
+    ROBE = "ROBE"
+    DOUBLE_PATH_ROBE = "DOUBLE_PATH_ROBE"
+
+
+class Accessory(Enum):
+    PENDANT = "PENDANT"
+    DOUBLE_PATH_PENDANT = "DOUBLE_PATH_PENDANT"
+    BRACELET = "BRACELET"
+    DOUBLE_PATH_BRACELET = "DOUBLE_PATH_BRACELET"
