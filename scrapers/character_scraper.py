@@ -1,13 +1,11 @@
 import json
-import os
 import time
-from enum import Enum
 
 import cv2
 import jellyfish
 import numpy as np
 
-os.environ["BOT_LOG_LEVEL"] = "DEBUG"
+# os.environ["BOT_LOG_LEVEL"] = "DEBUG"
 
 from log import logger
 from screen import Screen
@@ -123,11 +121,12 @@ class CharacterScraper:
         item = None
         for enum in data_enum:
             if jellyfish.jaro_winkler_similarity(enum.value, test_name) > 0.9:
-                item = enum
+                item = enum.value
                 break
 
         if item is None:
             # If missed, throw image into debug for later checking
+            item = "NONE"
             logger.warning(f"Failed to parse '{full_name}' into a {data_enum}")
             self.screen.capture(f"debug/unknown_item_{test_name}.png")
 
@@ -154,7 +153,7 @@ class CharacterScraper:
 
         # Weapon
         logger.debug(f"Getting weapon")
-        values["armour"] = self.scrape_item(col1, row1, Weapon, check_double_path=True)
+        values["weapon"] = self.scrape_item(col1, row1, Weapon, check_double_path=True)
         # Armour
         logger.debug(f"Getting armour")
         values["armour"] = self.scrape_item(col1, row2, Armour, check_double_path=True)
@@ -164,8 +163,8 @@ class CharacterScraper:
 
         # Curio
         for i, r in enumerate([row1, row2, row3]):
-            logger.debug(f"Getting curio_{i}")
-            values[f"curio_{i}"] = self.scrape_item(col2, r, Curio, full_match=True)
+            logger.debug(f"Getting curio_{i+1}")
+            values[f"curio_{i+1}"] = self.scrape_item(col2, r, Curio, full_match=True)
 
         # General relics
         i = 0
@@ -267,12 +266,18 @@ class CharacterScraper:
         return values
 
     def scrape(self):
+        """ Scrapes """
         full_stats = {}
         logger.info("Starting character scrape")
         try:
-            # Get the relic items
-            full_stats.update(self.scrape_relics())
-            logger.info("Collected relic values")
+            # Get character identifying information
+            # full_stats.update(self.scrape_identifier())
+            # Get the relic items if looking at different character
+            if not self.own_character:
+                full_stats.update(self.scrape_relics())
+                logger.info("Collected relic values")
+            else:
+                logger.info("Skipped relic values as looking at own character")
             # Open compare screen by clicking the button
             self.screen.tap_button("../character_scraper/compare_button")
             # Set screen masking and filtering
@@ -284,8 +289,6 @@ class CharacterScraper:
             # Sweep through all the compare STAT values
             full_stats.update(self.scrape_stat_stats())
             logger.info("Collected stat values")
-            # Compile into a database.
-
         except Exception as e:
             self.screen.back()
             raise e
@@ -294,30 +297,42 @@ class CharacterScraper:
         return full_stats
 
 
-with open('moonlitmoo.json', 'r') as file:
-    exact = json.load(file)
+if __name__ == "__main__":
+    own_char = False
+    ref_file = 'moonlitmoo.json' if own_char else 'lieunhuvan.json'
 
-times = []
-error = []
-for i in range(10):
-    s_time = time.perf_counter()
-    stats = CharacterScraper(own_character=True).scrape()
-    times.append(time.perf_counter() - s_time)
-    # print("Found stats:")
-    # for k, v in stats.items():
-    #     print(f"\t{k}: {v:.3e}")
+    with open(ref_file, 'r') as file:
+        exact = json.load(file)
 
-    print("Differing items")
-    wrong = 0
-    for k, v in stats.items():
-        if exact[k] == 0 and v != exact[k]:
-            wrong += 1
-            print(f"Found {k}: {v}, previously {exact[k]}")
-        elif exact[k] != 0 and abs(v / exact[k] - 1) > 0.01:  # Check within 1%
-            wrong += 1
-            print(f"Found {k}: {v}, previously {exact[k]} off by {v / exact[k] * 100 - 100:3.1f}%")
-    print(f"Test {i} incorrect {wrong / len(stats) * 100:3.1f}%")
-    error.append(wrong / len(stats))
+    times = []
+    error = []
+    for i in range(10):
+        s_time = time.perf_counter()
+        stats = CharacterScraper(own_character=own_char).scrape()
+        times.append(time.perf_counter() - s_time)
 
-print(f"Average error {np.average(error) * 100:3.1f}% with std {np.std(error)*100:1.2f}%")
-print(f"Average time {np.average(times):3.1f}s with std {np.std(error):2.2f}s%")
+        print("Differing items")
+        wrong = 0
+        for k, v in stats.items():
+            if k not in exact:
+                print(f'Missing exact value for {k}: {v}')
+                continue
+            if isinstance(v, str):
+                if exact[k] != v:
+                    wrong += 1
+                    print(f"Found {k}: {v}, previously {exact[k]}")
+                continue
+            if exact[k] == 0 and v != exact[k]:
+                wrong += 1
+                print(f"Found {k}: {v}, previously {exact[k]}")
+            elif exact[k] != 0 and abs(v / exact[k] - 1) > 0.01:  # Check within 1%
+                wrong += 1
+                print(f"Found {k}: {v}, previously {exact[k]} off by {v / exact[k] * 100 - 100:3.1f}%")
+        for k, _ in exact.items():
+            if k not in stats:
+                print(f"Missing scraped value for {k}")
+        print(f"Test {i} incorrect {wrong / len(stats) * 100:3.1f}%")
+        error.append(wrong / len(stats))
+
+    print(f"Average error {np.average(error) * 100:3.1f}% with std {np.std(error) * 100:1.2f}%")
+    print(f"Average time {np.average(times):3.1f}s with std {np.std(error):2.2f}s%")
