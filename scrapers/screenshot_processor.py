@@ -19,8 +19,8 @@ def parse_text_number(text: str) -> float:
     float
         The sum of the two numbers.
     """
-    # Regular expression to find numbers with optional 'K' or 'M'
-    pattern = r'([\d\.]+)([TBMK]?)'
+    # Regular expression to find numbers with optional value suffix.
+    pattern = r'([\d\.]+)([TBMmKk]?)'
     match = re.match(pattern, text)
 
     if not match:
@@ -33,9 +33,9 @@ def parse_text_number(text: str) -> float:
             num *= 1_000_000_000_000
         case 'B':
             num *= 1_000_000_000
-        case 'M':
+        case 'M' | 'm':
             num *= 1_000_000
-        case 'K':
+        case 'K' | 'k':
             num *= 1_000
     return num
 
