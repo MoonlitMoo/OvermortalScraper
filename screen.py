@@ -109,6 +109,7 @@ class Screen:
     def capture_scrollshot(self, file: str, overlap: int, offset: int, scroll_params, crop_area=None, max_shots: int = 50):
         stitched = None
         prev_img = None
+        similar_count = 0
 
         for i in range(max_shots):
             # Get the screenshot
@@ -120,11 +121,17 @@ class Screen:
                 x1, x2, y1, y2 = crop_area
                 img = img[y1:y2, x1:x2]
 
-            # Find if the two are the same
+            # Stitch images together if we can
             if prev_img is not None:
+                # Break if we have found similar images three times in a row+
                 if similar_images(prev_img, img):
-                    self.logger.debug("No change detected, stopping.")
-                    break
+                    if similar_count > 2:
+                        self.logger.debug("No change detected, stopping.")
+                        break
+                    else:
+                        similar_count += 1
+                else:
+                    similar_count = 0
                 stitched = stitch_images(stitched, img, overlap, offset)
             else:
                 stitched = img
