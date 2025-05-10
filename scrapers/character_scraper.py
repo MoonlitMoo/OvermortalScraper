@@ -62,6 +62,79 @@ class CharacterScraper:
         except ValueError:
             return 0
 
+    def scrape_item(self, x, y, data_enum, use_full_name=False, test_double_path=False):
+        # Select item
+        self.screen.tap(x, y)
+        time.sleep(0.75)
+
+        # Read text
+        img = self.screen.update()
+        name_bbox = (300, 1000, 250, 420)
+        # Get the value
+        if test_double_path:
+            all_text = self.processor.extract_text_from_area(img, name_bbox, all_text=True)
+            # Join all the text and rely on enhancement to split off the name
+            full_name = ' '.join(all_text).split("+")[0].strip()
+            # Look for double path in any of the text we find
+            is_double_path = any(['DOUBLE PATH' in i.upper() for i in all_text])
+        else:
+            full_name = self.processor.extract_text_from_area(img, name_bbox)
+            is_double_path = False
+        # Trim if we only want the last word
+        if not use_full_name:
+            full_name = full_name.split(' ')[-1]
+        # Add double path prefix
+        if is_double_path:
+            full_name = f"DOUBLE_PATH_{full_name}"
+
+        # Look for most similar enum value
+        test_name = full_name.replace(' ', '_').upper()
+        item = None
+        for enum in data_enum:
+            if jellyfish.jaro_winkler_similarity(enum.value, test_name) > 0.9:
+                item = enum
+                break
+
+        if item is None:
+            # If missed, throw image into debug for later checking
+            logger.warning(f"Failed to parse '{full_name}' into a {data_enum}")
+            self.screen.capture(f"tmp/debug/unknown_item_{test_name}.png")
+
+        # Return back to main screen
+        self.screen.tap(500, 1800)
+        time.sleep(0.75)
+        return item
+
+    def scrape_relics(self):
+        """ Scrapes the relics and curios that a Taoist is using. """
+        values = {}
+        col1, col2 = 760, 900
+        row1, row2, row3 = 500, 625, 700
+
+        # Weapon
+        logger.debug(f"Getting weapon")
+        values["armour"] = self.scrape_item(col1, row1, Weapon, test_double_path=True)
+        # Armour
+        logger.debug(f"Getting armour")
+        values["armour"] = self.scrape_item(col1, row2, Armour, test_double_path=True)
+        # Accessory
+        logger.debug(f"Getting accessory")
+        values["accessory"] = self.scrape_item(col1, row3, Accessory, test_double_path=True)
+
+        # Curio
+        for i, r in enumerate([row1, row2, row3]):
+            logger.debug(f"Getting curio_{i}")
+            values[f"curio_{i}"] = self.scrape_item(col2, r, Curio, use_full_name=True)
+
+        # General relics
+        i = 0
+        for c in [col1, col2]:
+            for r in [880, 1000, 1130]:
+                i += 1
+                logger.debug(f"Getting relic_{i}")
+                values[f"relic_{i}"] = self.scrape_item(c, r, Relic)
+        return values
+
     def scrape_br_stats(self):
         """ Scrapes the BR stat page for all the values, returning them in a dictionary.
         Checks we are on BR stat page before iterating through all the possible stats to get the image (top to bottom).
