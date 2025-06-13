@@ -226,15 +226,15 @@ class CharacterScraper:
                'ability_dmg_reduction', 'relic_dmg_taoist', 'relic_dmg_reduction', 'dmg_demonic_taoist',
                'demonic_taoist_dmg_reduction', 'dmg_divine_taoist', 'divine_taoist_dmg_reduction', 'p_pen', 'p_block',
                'm_pen', 'm_block', 'crit_multiplier', 'crit_block', 'crit_dmg', 'crit', 'crit_res', 'resilience',
-               'control_chance_boost', 'control_chance_resist', 'control_dur_amp', 'control_dur_res',
-               'control_dur_boost', 'control_dur_reduction', 'control_resist_chance_reduction', 'curio_dmg_taoist',
-               'curio_dmg_reduction', 'p_hit', 'p_eva', 'm_hit', 'm_eva', 'dmg_bonus_monsters', 'monster_dmg_reduction',
-               'curio_dmg_monster', 'curio_dmg_pet', 'taoist_dmg_projection', 'law_suppression_boost',
-               'law_suppression_resist', 'mortal_ability_dmg_reduction', 'res_mortal_effects',
-               'spiritual_ability_dmg_reduction', 'res_spiritual_effects', 'spiritual_paralysis_resist',
-               'spiritual_blind_resist', 'spiritual_silence_resist', 'spiritual_curse_resist', 'sense', 'mspd',
-               'physique', 'agility', 'manipulation', 'occult_figure', 'hp_regen', 'mp_regen',
-               'projection_resist_taoist_dmg']
+               'paralysis_chance_boost', 'paralysis_chance_resist', 'paralysis_duration_boost',
+               'paralysis_duration_resist', 'paralysis_duration_boost_2', 'paralysis_duration_reduction',
+               'paralysis_chance_reduction', 'curio_dmg_taoist', 'curio_dmg_reduction', 'p_hit', 'p_eva', 'm_hit',
+               'm_eva', 'dmg_bonus_monsters', 'monster_dmg_reduction', 'curio_dmg_monster', 'curio_dmg_pet',
+               'taoist_dmg_projection', 'law_suppression_boost', 'law_suppression_resist',
+               'mortal_ability_dmg_reduction', 'res_mortal_effects', 'spiritual_ability_dmg_reduction',
+               'res_spiritual_effects', 'spiritual_paralysis_resist', 'spiritual_blind_resist',
+               'spiritual_silence_resist', 'spiritual_curse_resist', 'sense', 'mspd', 'physique', 'agility',
+               'manipulation', 'occult_figure', 'hp_regen', 'mp_regen', 'projection_resist_taoist_dmg']
         x_offset = 280 if self.own_character else 580
 
         if not self.screen.find("character_scraper/stat_state"):
