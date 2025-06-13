@@ -139,8 +139,29 @@ class CharacterScraper:
         time.sleep(0.75)
         return item
 
-    def scrape_identifier(self):
-        pass
+    def scrape_name(self):
+        # Open report screen by tapping more and report
+        self.screen.tap(200, 1225)
+        time.sleep(0.1)
+        self.screen.tap(400, 990)
+        time.sleep(0.1)
+        # Capture text of name
+        img = self.screen.update()
+        all_text = self.processor.extract_text_from_area(
+            img, (100, 950, 550, 650), all_text=True, use_name_reader=True)
+        text = ' '.join(all_text).split("player:")[-1].lower().strip()
+        logger.debug(f"Scraped name '{text}'")
+        # Go back to home screen
+        self.screen.tap(500, 1500)
+        time.sleep(0.1)
+        self.screen.tap(500, 1500)
+        return {"name": text}
+
+    def scrape_total_br(self):
+        img = self.screen.update()
+        value = self.processor.extract_text_from_area(img, (820, 1000, 250, 300))
+        logger.debug(f"[scrape_total_br] Found '{value}' and parsed as '{parse_text_number(value)}'")
+        return {"total_br": parse_text_number(value)}
 
     def scrape_relics(self):
         """ Scrapes the relics and curios that a Taoist is using.
@@ -276,7 +297,7 @@ class CharacterScraper:
         logger.info("Starting character scrape")
         try:
             # Get character identifying information
-            # full_stats.update(self.scrape_identifier())
+            full_stats.update(self.scrape_name())
             # Get the relic items if looking at different character
             if not self.own_character:
                 full_stats.update(self.scrape_relics())
@@ -288,6 +309,8 @@ class CharacterScraper:
             # Set screen masking and filtering
             self.screen.filter_notifications = True
             self.screen.green_select = (590, 1080, 800, 900)
+            # Get the total BR
+            full_stats.update(self.scrape_total_br())
             # Sweep through all the compare BR value
             full_stats.update(self.scrape_br_stats())
             logger.info("Collected BR values")

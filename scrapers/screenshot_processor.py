@@ -44,9 +44,11 @@ class ScreenshotProcesser:
 
     def __init__(self):
         self.reader = easyocr.Reader(['en'])
+        self.name_reader = easyocr.Reader(['en', 'th'])
 
     def extract_text_from_area(self, img: str | np.ndarray, area: tuple, thresholding: bool = False,
-                               faint_text: bool = False, all_text: bool = False, debug: bool = False) -> str:
+                               faint_text: bool = False, all_text: bool = False, use_name_reader: bool = False,
+                               debug: bool = False) -> str:
         """
         Extract text from a specific rectangular area of an image.
 
@@ -55,13 +57,15 @@ class ScreenshotProcesser:
         img : str | array
             Path to the input image file or image itself.
         area : tuple
-            (x1, y1, x2, y2) specifying the crop rectangle.
+            (x1, x2, y1, y2) specifying the crop rectangle.
         thresholding : bool, optional
             Whether to apply thresholding before OCR (default True).
         faint_text : bool, optional
             Whether to apply processing to assist in detecting faint text
         all_text : bool, optional
             Whether to return all text, or only first text section.
+        use_name_reader: bool, optional
+            Whether to use name reader which includes alternative languages (default false).
         debug : bool, optional
             To show the selected image / area
 
@@ -95,7 +99,10 @@ class ScreenshotProcesser:
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
-        text = self.reader.readtext(proc, detail=0)
+        if use_name_reader:
+            text = self.name_reader.readtext(proc, detail=0)
+        else:
+            text = self.reader.readtext(proc, detail=0)
         if all_text:
             return text if text else []
         return text[0].strip() if text else ''
