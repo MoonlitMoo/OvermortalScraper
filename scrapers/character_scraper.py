@@ -59,8 +59,10 @@ class CharacterScraper:
                                                       thresholding=False,
                                                       faint_text=not self.own_character)
         try:
+            logger.debug(f"[get_value] Retrieved text '{value}' as '{parse_text_number(value)}")
             return parse_text_number(value)
         except ValueError:
+            logger.debug(f"[get_value] Retrieved text '{value}' as '0'")
             return 0
 
     def scrape_item(self, x, y, data_enum, full_match=False, check_double_path=False):
@@ -99,19 +101,21 @@ class CharacterScraper:
         # Read text
         img = self.screen.update()
         name_bbox = (300, 1000, 250, 420)
-        # Get the value
+
+        all_text = self.processor.extract_text_from_area(img, name_bbox, all_text=True)
+        # Join all the text and rely on enhancement to split off the name
+        full_name = ' '.join(all_text).split("+")[0].strip()
+
+        # Look for double path in any of the full text we find
         if check_double_path:
-            all_text = self.processor.extract_text_from_area(img, name_bbox, all_text=True)
-            # Join all the text and rely on enhancement to split off the name
-            full_name = ' '.join(all_text).split("+")[0].strip()
-            # Look for double path in any of the text we find
             is_double_path = any(['DOUBLE PATH' in i.upper() for i in all_text])
         else:
-            full_name = self.processor.extract_text_from_area(img, name_bbox)
             is_double_path = False
+
         # Trim if we only want the last word
         if not full_match:
             full_name = full_name.split(' ')[-1]
+
         # Add double path prefix
         if is_double_path:
             full_name = f"DOUBLE_PATH_{full_name}"
@@ -127,8 +131,8 @@ class CharacterScraper:
         if item is None:
             # If missed, throw image into debug for later checking
             item = "NONE"
-            logger.warning(f"Failed to parse '{full_name}' into a {data_enum}")
-            self.screen.capture(f"debug/unknown_item_{test_name}.png")
+            logger.warning(f"Failed to parse '{full_name}' from capture '{all_text}' into a {data_enum}")
+            self.screen.capture(f"debug/unknown_item_{all_text}.png")
 
         # Return back to main screen
         self.screen.tap(500, 1800)
@@ -248,8 +252,9 @@ class CharacterScraper:
         x, y_origin = self.get_start_loc(path, 'stats/hp', x_offset)
         # For each identifier (in order)
         values = {}
-        n_reset = 5
+        n_reset = 6
         for idx, i in enumerate(ids):
+            logger.debug(f"[scrape_stats_stats] Finding value for '{i}'")
             # Update start value every n_reset items to prevent drift
             if idx % n_reset == 0:
                 x, y_origin = self.get_start_loc(path, f'stats/{i}', x_offset)
