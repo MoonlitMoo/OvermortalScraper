@@ -19,6 +19,11 @@ def parse_text_number(text: str) -> float:
     float
         The sum of the two numbers.
     """
+    # Corrects for % being parsed as X/ or X.0 and cleans it up.
+    if text.endswith("/"):
+        text = text[:-2]
+    if text.endswith(".0"):
+        text = text[:-3]
     # Regular expression to find numbers with optional value suffix.
     pattern = r'([\d\.]+)([TBMmKk]?)'
     match = re.match(pattern, text)
