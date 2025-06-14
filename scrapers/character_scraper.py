@@ -1,4 +1,5 @@
 import json
+import re
 import time
 
 import cv2
@@ -180,6 +181,104 @@ class CharacterScraper:
         logger.debug(f"[scrape_total_br] Found '{value}' and parsed as '{parse_text_number(value)}'")
         return {"total_br": parse_text_number(value)}
 
+    def scrape_cultivation(self):
+        """ Retrieves cultivation and daemonfae levels from the two details screens.
+        Pulls the stage and minor stage (early, middle, late) for cultivation. Same for daemonfae, but also gets the
+        alignment.
+
+        Returns
+        -------
+        dict
+            key: value for all levles
+        """
+        # Make sure we are on compare br screen
+        if not self.screen.find("character_scraper/br_state"):
+            self.screen.tap(800, 1800)
+            self.screen.wait_for_state("../character_scraper/br_state")
+        # Find the character details and click it
+        self.screen.update()
+        try:
+            _, character_y = self.get_start_loc(self.screen.CURRENT_SCREEN, 'br/character', 0)
+        except Exception:
+            logger.error("Failed to find character details")
+            return {}
+        detail_x, detail_y_offset = 900, 20
+        self.screen.tap(detail_x, character_y+detail_y_offset)
+        time.sleep(0.25)
+
+        result = {}
+        # Get the 4 cultivation levels and go back
+        img = self.screen.update()
+        cultivation_area = (250, 490, 950, 1300) if self.own_character else (700, 1000, 950, 1300)
+        text = ' '.join(self.processor.extract_text_from_area(
+            img, cultivation_area, all_text=True, faint_text=self.own_character))
+        logger.debug(f"Found cultivation text '{text}'")
+        label_to_name = {"M": "magicka", "C": "corporia", "S": "swordia", "G": "ghostia"}
+        for level in CultivationLevel:
+            if level == CultivationLevel.NOVICE:
+                # Match: e.g., "Novice (G)" — no stage required
+                pattern = rf'\b({re.escape(level.value)})\s*\(\s*([A-Z])\s*\)'
+            else:
+                # Match: e.g., "Voidbreak (M) Early"
+                pattern = rf'\b({re.escape(level.value)})\s*\(\s*([A-Z])\s*\)\s*(early|middle|late)'
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                groups = match.groups()
+                level_str, label = groups[0], groups[1].upper()
+                stage = groups[2].lower() if len(groups) > 2 else None
+
+                if label in label_to_name:
+                    name = label_to_name[label]
+                    result[f"{name}_stage"] = CultivationLevel[level_str.upper()].value
+                    result[f"{name}_minor_stage"] = stage.upper() if stage else None
+        self.screen.tap(100, 1800)
+        time.sleep(.25)
+
+        # Scroll to Daemonfae and open details
+        daemonfae_y, _iter = None, 0
+        while not daemonfae_y and _iter < 5:
+            try:
+                self.screen.update()
+                _, daemonfae_y = self.get_start_loc(self.screen.CURRENT_SCREEN, 'br/daemonfae', 0)
+            except:
+                self.screen.swipe(820, 1300, 820, 1000)
+                _iter += 1
+                time.sleep(1)
+        self.screen.tap(detail_x, daemonfae_y + detail_y_offset)
+        time.sleep(.25)
+        logger.debug(f"Found daemonfae location {detail_x}, {daemonfae_y + detail_y_offset}")
+        # Read stage + alignment
+        img = self.screen.update()
+        daemonfae_area = (250, 490, 960, 1050) if self.own_character else (700, 1000, 960, 1050)
+        text = ' '.join(self.processor.extract_text_from_area(
+            img, daemonfae_area, all_text=True, faint_text=self.own_character))
+        logger.debug(f"Read daemonfae text '{text}'")
+        # Match e.g., "Demon IV (Late)" or "Divinity 5 (Early)"
+        pattern = r'\b([A-Za-z]+)\s+([IVX]+|\d+)\s*\(\s*(early|middle|late)\s*\)'
+        match = re.search(pattern, text, re.IGNORECASE)
+        if not match:
+            raise ValueError("Could not parse daemonfae alignment string.")
+
+        alignment, stage_raw, minor_stage = match.groups()
+        # Convert stage to integer (roman or numeric)
+        roman_to_int = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7, "VIII": 8, "IX": 9, "X": 10}
+        stage_raw_upper = stage_raw.upper()
+        if stage_raw_upper in roman_to_int:
+            stage = roman_to_int[stage_raw_upper]
+        elif stage_raw.isdigit():
+            stage = int(stage_raw)
+        else:
+            raise ValueError(f"Unrecognized stage value: {stage_raw}")
+        result.update({
+            "alignment": alignment.upper(),
+            "daemonfae_stage": stage,
+            "daemonfae_minor_stage": minor_stage.upper()
+        })
+        self.screen.tap(100, 1800)
+        time.sleep(.25)
+        logger.debug(f"Parsed levels '{result}'")
+        return {}
+
     def scrape_relics(self):
         """ Scrapes the relics and curios that a Taoist is using.
         Defines the coordinates for each item and scrapes them individually.
@@ -205,8 +304,8 @@ class CharacterScraper:
 
         # Curio
         for i, r in enumerate([row1, row2, row3]):
-            logger.debug(f"Getting curio_{i+1}")
-            values[f"curio_{i+1}"] = self.scrape_item(col2, r, Curio, full_match=True)
+            logger.debug(f"Getting curio_{i + 1}")
+            values[f"curio_{i + 1}"] = self.scrape_item(col2, r, Curio, full_match=True)
 
         # General relics
         i = 0
@@ -309,7 +408,7 @@ class CharacterScraper:
         return values
 
     def scrape(self):
-        """ Scrapes """
+        """ Scrapes full character stats """
         full_stats = {}
         logger.info("Starting character scrape")
         try:
@@ -328,6 +427,8 @@ class CharacterScraper:
             self.screen.green_select = (590, 1080, 800, 900)
             # Get the total BR
             full_stats.update(self.scrape_total_br())
+            # Get the cultivation and daemonfae
+            full_stats.update(self.scrape_cultivation())
             # Sweep through all the compare BR value
             full_stats.update(self.scrape_br_stats())
             logger.info("Collected BR values")
