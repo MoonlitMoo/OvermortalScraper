@@ -140,6 +140,15 @@ class CharacterScraper:
         return item
 
     def scrape_name(self):
+        """ Retrieves the name of the taoist.
+        Uses the name found in the report screen as doesn't have a changeable background and won't be interfered with by
+        the sect name.
+
+        Returns
+        -------
+        dict
+            {Name : value} pairing
+        """
         # Open report screen by tapping more and report
         self.screen.tap(200, 1225)
         time.sleep(0.1)
@@ -158,6 +167,14 @@ class CharacterScraper:
         return {"name": text}
 
     def scrape_total_br(self):
+        """ Get the total BR from the compare BR screen.
+        Assumes screen is open when scraping.
+
+        Returns
+        -------
+        dict
+            {total_br : value} pair
+        """
         img = self.screen.update()
         value = self.processor.extract_text_from_area(img, (820, 1000, 250, 300))
         logger.debug(f"[scrape_total_br] Found '{value}' and parsed as '{parse_text_number(value)}'")
