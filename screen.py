@@ -35,15 +35,13 @@ class Screen:
             result = subprocess.run(["adb", "devices"], capture_output=True, text=True)
             devices_output = result.stdout
 
-            if bluestacks_host in devices_output:
-                return
-
-            print("BlueStacks not found in connected devices. Attempting to connect...")
-            connect_result = subprocess.run(["adb", "connect", bluestacks_host], capture_output=True, text=True)
-            if "connected" in connect_result.stdout.lower():
-                print("Successfully connected to BlueStacks.")
-            else:
-                print(f"Failed to connect: {connect_result.stdout.strip()}")
+            if bluestacks_host not in devices_output:
+                print("BlueStacks not found in connected devices. Attempting to connect...")
+                connect_result = subprocess.run(["adb", "connect", bluestacks_host], capture_output=True, text=True)
+                if "connected" in connect_result.stdout.lower():
+                    print("Successfully connected to BlueStacks.")
+                else:
+                    print(f"Failed to connect: {connect_result.stdout.strip()}")
         except Exception as e:
             print(f"Error while checking/connecting ADB: {e}")
 
