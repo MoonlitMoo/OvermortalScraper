@@ -277,6 +277,45 @@ class CharacterScraper:
         logger.debug(f"Parsed levels '{result}'")
         return {}
 
+    def scrape_abilities(self):
+        # Make sure we are on compare br screen
+        if not self.screen.find("character_scraper/br_state"):
+            self.screen.tap(800, 1800)
+            self.screen.wait_for_state("../character_scraper/br_state")
+        # Find the ability details and click it
+        self.screen.update()
+        try:
+            _, character_y = self.get_start_loc(self.screen.CURRENT_SCREEN, 'br/ability', 0)
+        except Exception:
+            logger.error("[SCRAPE_ABILITIES] Failed to find character details")
+            return {}
+        detail_x, detail_y_offset = 900, 20
+        self.screen.tap(detail_x, character_y + detail_y_offset)
+        time.sleep(0.25)
+
+        # Read all the 6 abilities
+        results = {}
+        rows = [540, 705, 860]
+        cols = [1005, 1215]
+        x_len, y_len = 160, 95
+        # Colour invert so that the light words with dark border -> dark words with light border
+        img = self.screen.update()
+        img = cv2.bitwise_not(img)
+        i = 0
+        for x in rows:
+            for y in cols:
+                # Tends to work best with thresholding
+                val = ' '.join(self.processor.extract_text_from_area(img, (x, x + x_len, y, y + y_len),
+                                                                     all_text=True, thresholding=True))
+                logger.debug(f"[SCRAPE_ABILITIES] Found {val} at {x}, {y}")
+                results[f"ability_{i}"] = val
+                i += 1
+        # Hit back button
+        self.screen.tap(100, 1800)
+        time.sleep(.25)
+        logger.info("[SCRAPE_ABILITIES] Finished scraping")
+        return results
+
     def scrape_relics(self):
         """ Scrapes the relics and curios that a Taoist is using.
         Defines the coordinates for each item and scrapes them individually.
@@ -431,6 +470,8 @@ class CharacterScraper:
             full_stats.update(self.scrape_total_br())
             # Get the cultivation and daemonfae
             full_stats.update(self.scrape_cultivation())
+            # Get equipped abilities
+            full_stats.update(self.scrape_abilities())
             # Sweep through all the compare BR value
             full_stats.update(self.scrape_br_stats())
             # Sweep through all the compare STAT values
