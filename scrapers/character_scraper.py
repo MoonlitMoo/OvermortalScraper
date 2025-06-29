@@ -159,12 +159,14 @@ class CharacterScraper:
         img = self.screen.update()
         all_text = self.processor.extract_text_from_area(
             img, (100, 950, 550, 650), all_text=True, use_name_reader=True)
-        text = ' '.join(all_text).split("player:")[-1].lower().strip()
+        # Sanitise the name
+        text = ' '.join(all_text).split("player:")[-1].lower().strip().encode(errors='replace').decode()
         logger.debug(f"Scraped name '{text}'")
         # Go back to home screen
         self.screen.tap(500, 1500)
         time.sleep(0.1)
         self.screen.tap(500, 1500)
+        logger.info("[SCRAPE_NAME] Scraped name")
         return {"name": text}
 
     def scrape_total_br(self):
@@ -178,7 +180,8 @@ class CharacterScraper:
         """
         img = self.screen.update()
         value = self.processor.extract_text_from_area(img, (820, 1000, 250, 300))
-        logger.debug(f"[scrape_total_br] Found '{value}' and parsed as '{parse_text_number(value)}'")
+        logger.debug(f"[SCRAPE_TOTAL_BR] Found '{value}' and parsed as '{parse_text_number(value)}'")
+        logger.info(f"[SCRAPE_TOTAL_BR] Finished")
         return {"total_br": parse_text_number(value)}
 
     def scrape_cultivation(self):
@@ -203,7 +206,7 @@ class CharacterScraper:
             logger.error("Failed to find character details")
             return {}
         detail_x, detail_y_offset = 900, 20
-        self.screen.tap(detail_x, character_y+detail_y_offset)
+        self.screen.tap(detail_x, character_y + detail_y_offset)
         time.sleep(0.25)
 
         result = {}
@@ -212,7 +215,6 @@ class CharacterScraper:
         cultivation_area = (250, 490, 950, 1300) if self.own_character else (700, 1000, 950, 1300)
         text = ' '.join(self.processor.extract_text_from_area(
             img, cultivation_area, all_text=True, faint_text=self.own_character))
-        logger.debug(f"Found cultivation text '{text}'")
         label_to_name = {"M": "magicka", "C": "corporia", "S": "swordia", "G": "ghostia"}
         for level in CultivationLevel:
             if level == CultivationLevel.NOVICE:
@@ -314,6 +316,7 @@ class CharacterScraper:
                 i += 1
                 logger.debug(f"Getting relic_{i}")
                 values[f"relic_{i}"] = self.scrape_item(c, r, Relic)
+        logger.info("[SCRAPE_RELICS] Finished scraping relics")
         return values
 
     def scrape_br_stats(self):
@@ -333,6 +336,7 @@ class CharacterScraper:
             self.screen.tap(800, 1800)
             self.screen.wait_for_state("../character_scraper/br_state")
 
+        logger.debug("[SCRAPE_BR_STATS] Starting scrollshot")
         path = "tmp/br_scrollshot.png"
         self.screen.capture_scrollshot(path, 200, 250,
                                        (820, 1300, 820, 1200), (0, 1080, 800, 1700))
@@ -351,6 +355,7 @@ class CharacterScraper:
                 values[i] = 0
             else:
                 values[i] = val
+        logger.info("[SCRAPE_BR_STATS] Finished scraping")
         return values
 
     def scrape_stat_stats(self):
@@ -382,6 +387,7 @@ class CharacterScraper:
             self.screen.tap(1000, 1800)
             self.screen.wait_for_state("../character_scraper/stat_state")
 
+        logger.debug("[SCRAPE_STAT_STATS] Starting scrollshot")
         path = "tmp/stat_scrollshot.png"
         self.screen.capture_scrollshot(path, 200, 250,
                                        (640, 1300, 640, 1200), (0, 1080, 800, 1700))
@@ -405,21 +411,21 @@ class CharacterScraper:
                 values[i] = 0
             else:
                 values[i] = val
+        logger.debug("[SCRAPE_STAT_STATS] Finished scraping")
         return values
 
     def scrape(self):
         """ Scrapes full character stats """
         full_stats = {}
-        logger.info("Starting character scrape")
+        logger.info("[SCRAPE] Starting character scrape")
         try:
-            # Get character identifying information
-            full_stats.update(self.scrape_name())
-            # Get the relic items if looking at different character
             if not self.own_character:
+                # Get character identifying information
+                # Get the relic items if looking at different character
+                full_stats.update(self.scrape_name())
                 full_stats.update(self.scrape_relics())
-                logger.info("Collected relic values")
             else:
-                logger.info("Skipped relic values as looking at own character")
+                logger.info("[SCRAPE] Skipped relic and name values as looking at own character")
             # Open compare screen by clicking the button
             self.screen.tap_button("../character_scraper/compare_button")
             # Set screen masking and filtering
@@ -431,14 +437,12 @@ class CharacterScraper:
             full_stats.update(self.scrape_cultivation())
             # Sweep through all the compare BR value
             full_stats.update(self.scrape_br_stats())
-            logger.info("Collected BR values")
             # Sweep through all the compare STAT values
             full_stats.update(self.scrape_stat_stats())
-            logger.info("Collected stat values")
         except Exception as e:
             self.screen.back()
             raise e
-        logger.info("Finished character scrape")
+        logger.info("[SCRAPE] Finished character scrape")
         self.screen.back()
         return full_stats
 
