@@ -1,7 +1,7 @@
 import csv
 from pathlib import Path
 
-from models import Ability
+from models import Ability, RarityLevel, Pet
 from models.base import Base
 from db.session import engine, SessionLocal
 from models.cultivation import CultivationStage, CultivationType
@@ -12,7 +12,9 @@ def init_db():
     session = SessionLocal()
 
     seed_cultivation_levels(session)
+    seed_rarities(session)
     seed_abilities(session)
+    seed_pet(session)
 
     session.close()
 
@@ -28,6 +30,15 @@ def seed_cultivation_levels(session):
     for name in type_names:
         if not session.query(CultivationType).filter_by(name=name).first():
             session.add(CultivationType(name=name))
+    session.commit()
+
+
+def seed_rarities(session):
+    level_names = ["COMMON", "UNCOMMON", "RARE", "EPIC", "LEGENDARY", "MYTHIC"]
+    for name in level_names:
+        if not session.query(RarityLevel).filter_by(name=name).first():
+            session.add(RarityLevel(name=name))
+
     session.commit()
 
 
@@ -58,4 +69,18 @@ def seed_abilities(session, csv_path: str = "resources/db_seed/abilities.csv"):
             exists = session.query(Ability).filter_by(name=name).first()
             if not exists:
                 session.add(Ability(name=name, type=type_obj, stage=stage_obj))
+    session.commit()
+
+
+def seed_pet(session):
+    type_names = [("BABEOX", "BABEOX"), ("BABEDEER", "BABEDEER"), ("BABETOISE", "BABETOISE"),
+                  ("BELEPHANT", "BELEPHANT"), ("BABEWYRM", "BABEWYRM"), ("BLAZELION", "BLAZELION"),  # Babies
+                  ("VISIOX", "BABEOX"), ("SECONDDEER", "BABEDEER"), ("DAEMOTOISE", "BABETOISE"),
+                  ("LOTOPHANT", "BELEPHANT"), ("NECROWYRM", "BABEWYRM"), ("DRACOLION", "BLAZELION"),  # Adult
+                  ("FLAMMOX", "BABEOX"), ("THIRDDEER", "BABEDEER"), ("CELESTOISE", "BABETOISE"),
+                  ("SPIRIPHANT", "BELEPHANT"), ("VODYEWYRM", "BABEWYRM"), ("ETHERALION", "BLAZELION"),  # Human
+                  ]
+    for name, base_form in type_names:
+        if not session.query(Pet).filter_by(name=name).first():
+            session.add(Pet(name=name, base_form=base_form))
     session.commit()
