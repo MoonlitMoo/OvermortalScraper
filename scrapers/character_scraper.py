@@ -283,7 +283,7 @@ class CharacterScraper:
             return {}
         detail_x, detail_y_offset = 900, 20
         self.screen.tap(detail_x, character_y + detail_y_offset)
-        time.sleep(0.25)
+        self.screen.wait_for_state("character_screen/cultivation_exp")
 
         result = {}
         # Get the 4 cultivation levels and go back
@@ -312,7 +312,6 @@ class CharacterScraper:
                     result[f"{name}_stage"] = level.name
                     result[f"{name}_minor_stage"] = stage.upper() if stage else None
         self.screen.tap(100, 1800)
-        time.sleep(.25)
 
         # Scroll to Daemonfae and open details
         daemonfae_y, _iter = None, 0
@@ -322,11 +321,11 @@ class CharacterScraper:
                 _, daemonfae_y = self.get_start_loc(self.screen.CURRENT_SCREEN, 'br/daemonfae', 0)
             except:
                 self.screen.swipe(820, 1300, 820, 1000)
+                self.screen.tap(820, 1300)  # Stop the scroll
                 _iter += 1
-                time.sleep(1)
         self.screen.tap(detail_x, daemonfae_y + detail_y_offset)
-        time.sleep(.25)
-        logger.debug(f"[SCRAPE_CULTIVATION] Found daemonfae location {detail_x}, {daemonfae_y + detail_y_offset}")
+        self.screen.wait_for_state("character_screen/daemonfae_exp")
+
         # Read stage + alignment
         img = self.screen.update()
         daemonfae_area = (250, 490, 960, 1050) if self.own_character else (700, 1000, 960, 1050)
@@ -381,7 +380,7 @@ class CharacterScraper:
             return {}
         detail_x, detail_y_offset = 900, 20
         self.screen.tap(detail_x, character_y + detail_y_offset)
-        time.sleep(0.25)
+        self.screen.wait_for_state("character_screen/ability_equipped")
 
         # Read all the 6 abilities
         results = {}
