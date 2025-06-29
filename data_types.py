@@ -1,26 +1,6 @@
 from enum import Enum
 
 
-class CultivationType(Enum):
-    CORPORIA = "CORPORIA"
-    MAGICKA = "MAGICKA"
-    SWORDIA = "SWORDIA"
-    GHOSTIA = "GHOSTIA"
-
-
-class CultivationLevel(Enum):
-    NOVICE = "NOVICE"
-    CONNECTION = "CONNECTION"
-    FOUNDATION = "FOUNDATION"
-    VIRTUOSO = "VIRTUOSO"
-    NASCENT_SOUL = "NASCENT_SOUL"
-    INCARNATION = "INCARNATION"
-    VOIDBREAK = "VOIDBREAK"
-    WHOLENESS = "WHOLENESS"
-    PERFECTION = "PERFECTION"
-    NIRVANA = "NIRVANA"
-
-
 class Relic(Enum):
     # Physical
     BELL = "BELL"

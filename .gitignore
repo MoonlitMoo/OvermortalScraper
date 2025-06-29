@@ -1,7 +1,6 @@
 /.idea/*
-/__pycache__/*
-/screen-gridded.png
-/extracted.png
-/screen.png
 **/__pycache__/
+**/screen-gridded.png
+**/extracted.png
+**/overmortal_bot.log
 /tmp/
