@@ -85,23 +85,17 @@ def scraper(db_session):
 
 
 @pytest.fixture
-def scraped_results(tmp_path, scraper):
+def scraped_results(scraper):
     """ Fixture to get an initial scraped set of results.
     Expected to run from Taoist screen.
     """
-    file_path = os.path.join(tmp_path, "test_output.json")
-    res = scraper.scrape()
-    with open(file_path, 'w') as file:
-        file.write(json.dumps(res, indent=2))
-    return file_path
+    return scraper.scrape()
 
 
 def test_scrape_continuity(scraped_results, scraper):
     """ Run scraper five times and assert no errors occur and print the variance in results.
     Expected to run from Taoist screen.
     """
-    with open(scraped_results, 'r', encoding='utf-8') as file:
-        first_run = json.load(file)
 
     times = []
     error = []
@@ -110,7 +104,7 @@ def test_scrape_continuity(scraped_results, scraper):
         stats = scraper.scrape()
         times.append(time.perf_counter() - s_time)
         print(f"Test {i} Results")
-        err = compare_dict_results(first_run, stats)
+        err = compare_dict_results(scraped_results, stats)
         error.append(err)
         print(f"Error {err * 100:3.1f}%\n------------")
     print(f"Average error {np.average(error) * 100:3.1f}% with std {np.std(error) * 100:1.2f}%")
