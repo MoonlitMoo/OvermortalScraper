@@ -5,22 +5,38 @@ import time
 
 import numpy as np
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
+from db.init import seed_cultivation_levels
 from log import logger
+from models.base import Base
 from scrapers.character_scraper import CharacterScraper
+
+# Create a test engine (use SQLite in-memory DB)
+TEST_DB_URL = "sqlite:///:memory:"
 
 
 def compare_dict_results(expected, found):
     n_wrong = 0
     for k, v in found.items():
+        # Deal with missing value
         if k not in expected:
             print(f'Missing exact value for {k}: {v}')
             continue
+        # Deal with strings
         if isinstance(v, str):
             if expected[k] != v:
                 n_wrong += 1
                 print(f"Found {k}: {v}, previously {expected[k]}")
             continue
+        # Deal with null values
+        if v is None and expected[k] is None:
+            continue
+        if (expected[k] is None and v is not None) or (v is None and expected[k] is not None):
+            print(f"Found {k}: {v}, previously {expected[k]}")
+            continue
+        # Deal with numbers
         if expected[k] == 0 and v != expected[k]:
             n_wrong += 1
             print(f"Found {k}: {v}, previously {expected[k]}")
@@ -38,10 +54,32 @@ def fix_dirs():
     os.chdir("..")
 
 
+@pytest.fixture(scope="function")
+def db_session():
+    # Create test engine & session
+    engine = create_engine(TEST_DB_URL)
+    TestingSessionLocal = sessionmaker(bind=engine)
+
+    # Create tables
+    Base.metadata.create_all(engine)
+    # Yield session to test
+    session = TestingSessionLocal()
+
+    # Set up constant static tables
+    seed_cultivation_levels(session)
+    try:
+        yield session
+    finally:
+        session.close()
+
+
 @pytest.fixture
-def scraper():
+def scraper(db_session):
     """ Create the scraper to use with correct path to current screen. """
-    s = CharacterScraper(own_character=False)
+    from service.char_scraper_service import CharacterScraperService
+
+    service = CharacterScraperService(db=db_session)
+    s = CharacterScraper(service, own_character=False)
     return s
 
 
@@ -50,7 +88,7 @@ def scraped_results(tmp_path, scraper):
     """ Fixture to get an initial scraped set of results.
     Expected to run from Taoist screen.
     """
-    file_path = os.path.join(tmp_path, "test_output.txt")
+    file_path = os.path.join(tmp_path, "test_output.json")
     res = scraper.scrape()
     with open(file_path, 'w') as file:
         file.write(json.dumps(res, indent=2))
@@ -78,8 +116,20 @@ def test_scrape_continuity(scraped_results, scraper):
     print(f"Average time {np.average(times):3.1f}s with std {np.std(error):2.2f}s%")
 
 
+def test_scrape_cultivation(scraper, caplog):
+    """ Checks we can get the cultivations.
+    Expected to run from Taoist Compare BR screen.
+    """
+    caplog.set_level(logging.DEBUG, logger=logger.name)
+    try:
+        res = scraper.scrape_cultivation()
+    finally:
+        print("\n" + caplog.text)
+    assert res
+
+
 def test_scrape_abilities(scraper, caplog):
-    """ Checks we can get the abilitie names.
+    """ Checks we can get the ability names.
     Expected to run from Taoist Compare BR screen.
     """
     caplog.set_level(logging.DEBUG, logger=logger.name)

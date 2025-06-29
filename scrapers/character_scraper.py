@@ -6,16 +6,18 @@ import jellyfish
 
 from log import logger
 from screen import Screen
-from image_functions import locate_area
+from service.char_scraper_service import CharacterScraperService
 from scrapers.screenshot_processor import ScreenshotProcesser, parse_text_number
+from image_functions import locate_area
 from data_types import *
 
 
 class CharacterScraper:
     """ From the character select screen, retrieves all stats of a character found within the "Compare BR" tab. """
 
-    def __init__(self, own_character=False):
+    def __init__(self, service: CharacterScraperService, own_character=False):
         self.screen = Screen(logger)
+        self.service = service
         self.processor = ScreenshotProcesser()
         self.own_character = own_character
 
@@ -211,23 +213,25 @@ class CharacterScraper:
         cultivation_area = (250, 490, 950, 1300) if self.own_character else (700, 1000, 950, 1300)
         text = ' '.join(self.processor.extract_text_from_area(
             img, cultivation_area, all_text=True, faint_text=self.own_character))
-        label_to_name = {"M": "magicka", "C": "corporia", "S": "swordia", "G": "ghostia"}
-        for level in CultivationLevel:
-            if level == CultivationLevel.NOVICE:
+        label_to_type = {"M": "magicka", "C": "corporia", "S": "swordia", "G": "ghostia"}
+        # Check for each stage pattern
+        for level in self.service.get_cultivation_stages():
+            if level.name == "NOVICE":
                 # Match: e.g., "Novice (G)" — no stage required
-                pattern = rf'\b({re.escape(level.value)})\s*\(\s*([A-Z])\s*\)'
+                pattern = rf'\b({re.escape(level.name)})\s*\(\s*([A-Z])\s*\)'
             else:
                 # Match: e.g., "Voidbreak (M) Early"
-                pattern = rf'\b({re.escape(level.value)})\s*\(\s*([A-Z])\s*\)\s*(early|middle|late)'
+                pattern = rf'\b({re.escape(level.name)})\s*\(\s*([A-Z])\s*\)\s*(early|middle|late)'
             matches = re.finditer(pattern, text, re.IGNORECASE)
             for match in matches:
+                # If we find a match, grab the label (type) and add the level (stage) and minor stage into results.
                 groups = match.groups()
                 level_str, label = groups[0], groups[1].upper()
                 stage = groups[2].lower() if len(groups) > 2 else None
 
-                if label in label_to_name:
-                    name = label_to_name[label]
-                    result[f"{name}_stage"] = CultivationLevel[level_str.upper()].value
+                if label in label_to_type:
+                    name = label_to_type[label]
+                    result[f"{name}_stage"] = level.name
                     result[f"{name}_minor_stage"] = stage.upper() if stage else None
         self.screen.tap(100, 1800)
         time.sleep(.25)
