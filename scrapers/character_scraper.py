@@ -176,6 +176,10 @@ class CharacterScraper:
         dict
             {total_br : value} pair
         """
+        # Make sure we are on compare br screen
+        if not self.screen.find("character_scraper/br_state"):
+            self.screen.tap(800, 1800)
+            self.screen.wait_for_state("../character_scraper/br_state")
         img = self.screen.update()
         value = self.processor.extract_text_from_area(img, (820, 1000, 250, 300))
         logger.debug(f"[SCRAPE_TOTAL_BR] Found '{value}' and parsed as '{parse_text_number(value)}'")
@@ -259,7 +263,7 @@ class CharacterScraper:
         pattern = r'\b([A-Za-z]+)\s+([IVX]+|\d+)\s*\(\s*(early|middle|late)\s*\)'
         match = re.search(pattern, text, re.IGNORECASE)
         if not match:
-            raise ValueError("Could not parse daemonfae alignment string.")
+            raise ValueError(f"Could not parse daemonfae alignment string {text}.")
 
         alignment, stage_raw, minor_stage = match.groups()
         # Convert stage to integer (roman or numeric)
@@ -283,6 +287,13 @@ class CharacterScraper:
         return result
 
     def scrape_abilities(self):
+        """ Retrieves equipped abilities from the compare BR screen
+
+        Returns
+        -------
+        dict
+            key: value for all levels
+        """
         # Make sure we are on compare br screen
         if not self.screen.find("character_scraper/br_state"):
             self.screen.tap(800, 1800)
@@ -307,12 +318,19 @@ class CharacterScraper:
         img = self.screen.update()
         img = cv2.bitwise_not(img)
         i = 0
+        valid_abilities = self.service.get_ability_names()
         for x in rows:
             for y in cols:
-                # Tends to work best with thresholding
+                # Tends to work best with thresholding, sending to lower case
                 val = ' '.join(self.processor.extract_text_from_area(img, (x, x + x_len, y, y + y_len),
-                                                                     all_text=True, thresholding=True))
-                logger.debug(f"[SCRAPE_ABILITIES] Found {val} at {x}, {y}")
+                                                                     all_text=True, thresholding=True)).lower()
+                if val not in valid_abilities:
+                    # Use the one with the highest similarity
+                    similarities = [jellyfish.jaro_winkler_similarity(a, val) for a in valid_abilities]
+                    index = similarities.index(max(similarities))
+                    logger.debug(f"[SCRAPE_ABILITIES] Unknown ability {val}, "
+                                 f"using {valid_abilities[index]} with similarity {similarities[index]:.3f}")
+                    val = valid_abilities[index]
                 results[f"ability_{i}"] = val
                 i += 1
         # Hit back button
@@ -468,6 +486,7 @@ class CharacterScraper:
                 logger.info("[SCRAPE] Skipped relic and name values as looking at own character")
             # Open compare screen by clicking the button
             self.screen.tap_button("../character_scraper/compare_button")
+            time.sleep(0.25)
             # Set screen masking and filtering
             self.screen.filter_notifications = True
             self.screen.green_select = (590, 1080, 800, 900)

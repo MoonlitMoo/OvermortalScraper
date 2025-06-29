@@ -4,13 +4,13 @@ shadow claws,ghostia,connection
 soul anchor,ghostia,foundation
 phantom mist,ghostia,virtuoso
 twin hex,ghostia,foundation
-nether art - nether thorn,virtuoso,voidbreak
-soul symbiosis,nascent_soul,voidbreak
-nether art - wraith roar,nascent_soul,voidbreak
-nether tribunal,incarnation,voidbreak
-tides of lament,incarnation,voidbreak
-nether art - ghost grasp,incarnation,voidbreak
-nether art - silent doom,incarnation,voidbreak
+nether art - nether thorn,ghostia,virtuoso
+soul symbiosis,ghostia,nascent_soul
+nether art - wraith roar,ghostia,nascent_soul
+nether tribunal,ghostia,incarnation
+tides of lament,ghostia,incarnation
+nether art - ghost grasp,ghostia,incarnation
+nether art - silent doom,ghostia,incarnation
 arbiter - delusions's grasp,ghostia,voidbreak
 arbiter - wounding vow,ghostia,voidbreak
 soul bond,ghostia,voidbreak
@@ -68,7 +68,7 @@ death touch,corporia,virtuoso
 god's fall,corporia,nascent_soul
 blaze seal,corporia,nascent_soul
 demon's trap,corporia,incarnation
-buddha's palm,corporia,im
+buddha's palm,corporia,incarnation
 sunset halberd,corporia,incarnation
 ruthless,corporia,incarnation
 vidyaraja's palm,corporia,voidbreak
