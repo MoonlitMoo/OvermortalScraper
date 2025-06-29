@@ -37,7 +37,7 @@ class Screen:
 
             if bluestacks_host not in devices_output:
                 print("BlueStacks not found in connected devices. Attempting to connect...")
-                connect_result = subprocess.run(["adb", "connect", bluestacks_host], capture_output=True, text=True)
+                connect_result = subprocess.run(["adb", "connect", "127.0.0.1:5555"], capture_output=True, text=True)
                 if "connected" in connect_result.stdout.lower():
                     print("Successfully connected to BlueStacks.")
                 else:
