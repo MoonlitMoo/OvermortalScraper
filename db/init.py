@@ -1,3 +1,7 @@
+import csv
+from pathlib import Path
+
+from models import Ability
 from models.base import Base
 from db.session import engine, SessionLocal
 from models.cultivation import CultivationStage, CultivationType
@@ -8,6 +12,7 @@ def init_db():
     session = SessionLocal()
 
     seed_cultivation_levels(session)
+    seed_abilities(session)
 
     session.close()
 
@@ -23,4 +28,34 @@ def seed_cultivation_levels(session):
     for name in type_names:
         if not session.query(CultivationType).filter_by(name=name).first():
             session.add(CultivationType(name=name))
+    session.commit()
+
+
+def seed_abilities(session, csv_path: str = "resources/db_seed/abilities.csv"):
+    path = Path(csv_path)
+    if not path.exists():
+        print(f"Seed file not found: {csv_path}")
+        return
+
+    with path.open("r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            name = row.get("name", "").strip()
+            type_name = row.get("type", "").strip().upper()
+            stage_name = row.get("stage", "").strip().upper()
+
+            if not (name and type_name and stage_name):
+                print(f"BROKEN {row}")
+                continue
+
+            type_obj = session.query(CultivationType).filter_by(name=type_name).first()
+            stage_obj = session.query(CultivationStage).filter_by(name=stage_name).first()
+
+            if not type_obj or not stage_obj:
+                print(f"Skipping ability '{name}' — missing type or stage.")
+                continue
+
+            exists = session.query(Ability).filter_by(name=name).first()
+            if not exists:
+                session.add(Ability(name=name, type=type_obj, stage=stage_obj))
     session.commit()
