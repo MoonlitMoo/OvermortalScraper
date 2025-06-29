@@ -40,6 +40,13 @@ def extract_section(x1, x2, y1, y2, file=screen.CURRENT_SCREEN):
     cv2.imwrite(OUTPUT_PATH, crop)
 
 
+def sample_colour(x, y, file=screen.CURRENT_SCREEN):
+    """ Prints colour at pixel in RGB format """
+    img = cv2.cvtColor(cv2.imread(file), cv2.COLOR_BGR2RGB)
+    colour = img[y, x]
+    print(f"Found colour: ({colour[0]}, {colour[1]}, {colour[2]})")
+
+
 def debug_template_match():
     """ Checks if we can locate the extracted image from the screen """
     max_loc, max_val = screen._locate_image(OUTPUT_PATH)
