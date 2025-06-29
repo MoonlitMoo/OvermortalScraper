@@ -275,7 +275,8 @@ class CharacterScraper:
         self.screen.tap(100, 1800)
         time.sleep(.25)
         logger.debug(f"Parsed levels '{result}'")
-        return {}
+        logger.info("[SCRAPE_CULTIVATION] Finished scraping")
+        return result
 
     def scrape_abilities(self):
         # Make sure we are on compare br screen
