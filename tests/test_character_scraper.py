@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from db.init import seed_cultivation_levels, seed_abilities
+from db.init import seed_cultivation_levels, seed_abilities, seed_rarities, seed_pet
 from log import logger
 from models.base import Base
 from scrapers.character_scraper import CharacterScraper
@@ -67,7 +67,10 @@ def db_session():
 
     # Set up constant static tables
     seed_cultivation_levels(session)
+    seed_rarities(session)
     seed_abilities(session)
+    seed_pet(session)
+
     try:
         yield session
     finally:
@@ -92,11 +95,11 @@ def scraped_results(scraper):
     return scraper.scrape()
 
 
-def test_scrape_continuity(scraped_results, scraper):
+def test_scrape_continuity(scraped_results, scraper, caplog):
     """ Run scraper five times and assert no errors occur and print the variance in results.
     Expected to run from Taoist screen.
     """
-
+    caplog.set_level(logging.DEBUG, logger=logger.name)
     times = []
     error = []
     for i in range(5):
@@ -107,6 +110,7 @@ def test_scrape_continuity(scraped_results, scraper):
         err = compare_dict_results(scraped_results, stats)
         error.append(err)
         print(f"Error {err * 100:3.1f}%\n------------")
+    print("\n" + caplog.text)
     print(f"Average error {np.average(error) * 100:3.1f}% with std {np.std(error) * 100:1.2f}%")
     print(f"Average time {np.average(times):3.1f}s with std {np.std(error):2.2f}s%")
 
@@ -129,5 +133,15 @@ def test_scrape_abilities(scraper, caplog):
     """
     caplog.set_level(logging.DEBUG, logger=logger.name)
     res = scraper.scrape_abilities()
+    print("\n" + caplog.text)
+    assert res
+
+
+def test_scrape_pets(scraper, caplog):
+    """ Checks we can get the ability names.
+    Expected to run from Taoist Compare BR screen.
+    """
+    caplog.set_level(logging.DEBUG, logger=logger.name)
+    res = scraper.scrape_pets()
     print("\n" + caplog.text)
     assert res

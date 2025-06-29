@@ -3,6 +3,7 @@ import time
 
 import cv2
 import jellyfish
+import numpy as np
 
 from log import logger
 from screen import Screen
@@ -63,6 +64,36 @@ class CharacterScraper:
         except ValueError:
             logger.debug(f"[get_value] Retrieved text '{value}' as '0'")
             return 0
+
+    def validate_string(self, string, valid_strings, logger_func, logger_str):
+        """ Returns a valid string from the given list. Uses closest match if not exact.
+        Gives warning if closest match is not close.
+
+        Parameters
+        ----------
+        string : str
+            String to validate
+        valid_strings : list of str
+            The valid strings to match to
+        logger_func : str
+            A string describing the function calling validation
+        logger_str : str
+            A string describing what the string represents.
+
+        Returns
+        -------
+        str
+        """
+        if string in valid_strings:
+            return string
+
+        similarities = [jellyfish.jaro_winkler_similarity(a, string) for a in valid_strings]
+        index = similarities.index(max(similarities))
+        if max(similarities) < 0.5:
+            logger.warning(f"[{logger_func}] Unknown {logger_str} {string}")
+        logger.debug(f"[{logger_func}] Unknown {logger_str} {string}, "
+                     f"using {valid_strings[index]} with similarity {similarities[index]:.3f}")
+        return valid_strings[index]
 
     def scrape_item(self, x, y, data_enum, full_match=False, check_double_path=False):
         """ Scrapes an item for the name and turns it into an enumeration type.
@@ -166,6 +197,49 @@ class CharacterScraper:
         self.screen.tap(500, 1500)
         logger.info("[SCRAPE_NAME] Scraped name")
         return {"name": text}
+
+    def scrape_pets(self):
+        """ Scrapes equipped pet name and level. """
+        self.screen.tap_button("character_screen/pet")
+        self.screen.wait_for_state("character_screen/pet_formation")
+
+        # Iterate through the locations
+        results = {}
+        cols = [190, 445, 700]
+        width = 190
+        reference_colours = [
+            ("common", (215, 215, 215)),
+            ("uncommon", (103, 185, 96)),
+            ("rare", (83, 151, 199)),
+            ("epic", (163, 82, 203)),
+            ("legendary", (255, 189, 26)),
+            ("mythic", (239, 41, 50)),
+        ]
+        # Invert image to get dark text with light border.
+        img = self.screen.update()
+        inverted_img = cv2.bitwise_not(img)
+        valid_pets = self.service.get_pet_names()
+        # Zip the column to the formation array position
+        for x, i in zip(cols, ("front", "left", "right")):
+            # Send to upper to match db
+            val = self.processor.extract_text_from_area(inverted_img, (x, x + width, 1080, 1110)).upper()
+            val = self.validate_string(val, valid_pets, "SCRAPE_PET", "pet")
+            # Calculate the closest colour to get rarity
+            colour = img[1190, x + int(width/2)][::-1]  # Reverse since BGR by default
+            colour_distance = [
+                (label, np.linalg.norm(colour - np.array(ref_rgb)))
+                for label, ref_rgb in reference_colours
+            ]
+            rarity = min(colour_distance, key=lambda x: x[1])[0].upper()
+            results[f"pet_{i}_name"] = val
+            results[f"pet_{i}_rarity"] = rarity
+            logger.debug(f"[SCRAPE_PETS] Found {val} of rarity {rarity}")
+
+        logger.debug("[SCRAPE_PETS] Finished scraping")
+        # Exit pet screen and wait until we can see the button again
+        self.screen.tap(500, 1500)
+        self.screen.wait_for_state("../buttons/character_screen/pet")
+        return results
 
     def scrape_total_br(self):
         """ Get the total BR from the compare BR screen.
@@ -321,16 +395,10 @@ class CharacterScraper:
         valid_abilities = self.service.get_ability_names()
         for x in rows:
             for y in cols:
-                # Tends to work best with thresholding, sending to lower case
+                # Tends to work best with thresholding, sending to lower case to match db
                 val = ' '.join(self.processor.extract_text_from_area(img, (x, x + x_len, y, y + y_len),
                                                                      all_text=True, thresholding=True)).lower()
-                if val not in valid_abilities:
-                    # Use the one with the highest similarity
-                    similarities = [jellyfish.jaro_winkler_similarity(a, val) for a in valid_abilities]
-                    index = similarities.index(max(similarities))
-                    logger.debug(f"[SCRAPE_ABILITIES] Unknown ability {val}, "
-                                 f"using {valid_abilities[index]} with similarity {similarities[index]:.3f}")
-                    val = valid_abilities[index]
+                val = self.validate_string(val, valid_abilities, "SCRAPE_ABILITIES", "ability")
                 results[f"ability_{i}"] = val
                 i += 1
         # Hit back button
@@ -484,6 +552,8 @@ class CharacterScraper:
                 full_stats.update(self.scrape_relics())
             else:
                 logger.info("[SCRAPE] Skipped relic and name values as looking at own character")
+            # Get pets before opening compare screen
+            full_stats.update(self.scrape_pets())
             # Open compare screen by clicking the button
             self.screen.tap_button("../character_scraper/compare_button")
             time.sleep(0.25)
