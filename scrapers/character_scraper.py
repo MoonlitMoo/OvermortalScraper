@@ -1,12 +1,8 @@
-import json
 import re
 import time
 
 import cv2
 import jellyfish
-import numpy as np
-
-# os.environ["BOT_LOG_LEVEL"] = "DEBUG"
 
 from log import logger
 from screen import Screen
@@ -203,7 +199,7 @@ class CharacterScraper:
         try:
             _, character_y = self.get_start_loc(self.screen.CURRENT_SCREEN, 'br/character', 0)
         except Exception:
-            logger.error("Failed to find character details")
+            logger.error("[SCRAPE_CULTIVATION] Failed to find character details")
             return {}
         detail_x, detail_y_offset = 900, 20
         self.screen.tap(detail_x, character_y + detail_y_offset)
@@ -248,13 +244,13 @@ class CharacterScraper:
                 time.sleep(1)
         self.screen.tap(detail_x, daemonfae_y + detail_y_offset)
         time.sleep(.25)
-        logger.debug(f"Found daemonfae location {detail_x}, {daemonfae_y + detail_y_offset}")
+        logger.debug(f"[SCRAPE_CULTIVATION] Found daemonfae location {detail_x}, {daemonfae_y + detail_y_offset}")
         # Read stage + alignment
         img = self.screen.update()
         daemonfae_area = (250, 490, 960, 1050) if self.own_character else (700, 1000, 960, 1050)
         text = ' '.join(self.processor.extract_text_from_area(
             img, daemonfae_area, all_text=True, faint_text=self.own_character))
-        logger.debug(f"Read daemonfae text '{text}'")
+        logger.debug(f"[SCRAPE_CULTIVATION] Read daemonfae text '{text}'")
         # Match e.g., "Demon IV (Late)" or "Divinity 5 (Early)"
         pattern = r'\b([A-Za-z]+)\s+([IVX]+|\d+)\s*\(\s*(early|middle|late)\s*\)'
         match = re.search(pattern, text, re.IGNORECASE)
@@ -445,44 +441,3 @@ class CharacterScraper:
         logger.info("[SCRAPE] Finished character scrape")
         self.screen.back()
         return full_stats
-
-
-if __name__ == "__main__":
-    own_char = False
-    ref_file = 'moonlitmoo.json' if own_char else 'lieunhuvan.json'
-
-    with open(ref_file, 'r') as file:
-        exact = json.load(file)
-
-    times = []
-    error = []
-    for i in range(10):
-        s_time = time.perf_counter()
-        stats = CharacterScraper(own_character=own_char).scrape()
-        times.append(time.perf_counter() - s_time)
-
-        print("Differing items")
-        wrong = 0
-        for k, v in stats.items():
-            if k not in exact:
-                print(f'Missing exact value for {k}: {v}')
-                continue
-            if isinstance(v, str):
-                if exact[k] != v:
-                    wrong += 1
-                    print(f"Found {k}: {v}, previously {exact[k]}")
-                continue
-            if exact[k] == 0 and v != exact[k]:
-                wrong += 1
-                print(f"Found {k}: {v}, previously {exact[k]}")
-            elif exact[k] != 0 and abs(v / exact[k] - 1) > 0.01:  # Check within 1%
-                wrong += 1
-                print(f"Found {k}: {v}, previously {exact[k]} off by {v / exact[k] * 100 - 100:3.1f}%")
-        for k, _ in exact.items():
-            if k not in stats:
-                print(f"Missing scraped value for {k}")
-        print(f"Test {i} incorrect {wrong / len(stats) * 100:3.1f}%")
-        error.append(wrong / len(stats))
-
-    print(f"Average error {np.average(error) * 100:3.1f}% with std {np.std(error) * 100:1.2f}%")
-    print(f"Average time {np.average(times):3.1f}s with std {np.std(error):2.2f}s%")
