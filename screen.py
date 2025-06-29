@@ -42,6 +42,7 @@ class Screen:
                     print("Successfully connected to BlueStacks.")
                 else:
                     print(f"Failed to connect: {connect_result.stdout.strip()}")
+                    exit(1)
         except Exception as e:
             print(f"Error while checking/connecting ADB: {e}")
 
