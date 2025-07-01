@@ -1,9 +1,12 @@
 import subprocess
+import threading
 import time
 from typing import List
 
 import cv2
 import numpy as np
+import scrcpy
+from scrcpy import Client
 
 from image_functions import locate_image, stitch_images, similar_images
 
@@ -25,10 +28,12 @@ class Screen:
     dimensions = None, None
 
     def __init__(self, logger, bluestacks_host: str = "emulator-5554"):
+        self.dimensions = None
         self.logger = logger
         self.filter_notifications = False
         self.green_mask = (0, 0, 0, 0)
         self.green_select = (0, 1080, 700, 900)
+        self._image_lock = threading.Lock()
 
         try:
             # Check connected devices
@@ -46,17 +51,105 @@ class Screen:
         except Exception as e:
             print(f"Error while checking/connecting ADB: {e}")
 
-        self.update()
-        y, x, _ = cv2.imread(self.CURRENT_SCREEN).shape
-        self.dimensions = x, y
+        # Start up scrcpy client
+        self.client = Client(max_fps=20)
+        self._streaming = False
+
+        self.client.add_listener(scrcpy.EVENT_FRAME, self._update)
+        self.client.start(threaded=True)
+
+        start_time = time.time()
+        timeout = 5  # seconds
+
+        while not self._streaming:
+            if time.time() - start_time > timeout:
+                raise TimeoutError("Client did not become ready within 5 seconds.")
+            time.sleep(0.1)
+
+    def stop(self):
+        self.client.stop()
+
+    def _update(self, frame):
+        """ Updates current screen image, listener for scrcpy client. """
+        self._streaming = True
+        if frame is not None:
+            with self._image_lock:
+                cv2.imwrite(self.CURRENT_SCREEN, frame)
+
+    def _current_image(self):
+        """ Retrieves current image from file. """
+        with self._image_lock:
+            return cv2.imread(self.CURRENT_SCREEN)
 
     def colour(self):
         """ Returns current screen image in colour. """
-        return cv2.imread(self.CURRENT_SCREEN)
+        if self.filter_notifications:
+            return self.filtered_image()
+        return self._current_image()
 
     def grayscale(self):
         """ Returns current screen image in grayscale. """
-        return cv2.cvtColor(cv2.imread(self.CURRENT_SCREEN), cv2.COLOR_BGR2GRAY)
+        return cv2.cvtColor(self.colour(), cv2.COLOR_BGR2GRAY)
+
+    def filtered_image(self, retries: int = 5, delay: float = 1.0,
+                       green_mask: tuple = None, debug: bool = False):
+        """ Returns current image, but will delay until green isn't detected in mask.
+        Intended to filter out notifications.
+
+        Parameters
+        ----------
+        retries : int
+            Number of tries to get a clean image
+        delay : float
+            Time delay between image attempts
+        green_mask : list of int
+            The x1, x2, y1, y2 mask to check for green
+        debug : bool
+            Whether to display the current checked area and detected green via cv2.imshow()
+
+        Returns
+        -------
+        img:
+            Current image in colour (with warning if failed to get good image).
+        """
+        if green_mask is None:
+            green_mask = self.green_mask
+
+        for attempt in range(retries):
+            img = self._current_image()
+
+            # Convert to HSV for better color detection
+            hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+            # Define green color range (tweak if needed)
+            lower_green = np.array([50, 50, 50])
+            upper_green = np.array([90, 255, 255])
+
+            # Create a mask for green areas
+            mask = cv2.inRange(hsv, lower_green, upper_green)
+            mask[green_mask[2]:green_mask[3], green_mask[0]:green_mask[1]] = 0  # Skip any pictures
+
+            # Crop to notification area
+            crop = mask[self.green_select[2]:self.green_select[3], self.green_select[0]:self.green_select[1]]
+
+            green_pixels = cv2.countNonZero(crop)
+            total_pixels = crop.shape[0] * crop.shape[1]
+            green_ratio = green_pixels / total_pixels
+
+            if debug:
+                self.logger.debug(f"[Screen] Attempt {attempt + 1}: Green coverage = {green_ratio:.6f}")
+                cv2.imshow("Green locations", crop)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+
+            if green_ratio < 0.001:  # Less than 0.1% green pixels → accept
+                return img
+            else:
+                self.logger.debug("[Screen] Notification detected, retrying...")
+                time.sleep(delay)
+
+        self.logger.warning(f"[Screen] Failed to get clean screen after {retries} retries.")
+        return self._current_image()
 
     def capture(self, name: str = None):
         """
@@ -67,7 +160,6 @@ class Screen:
         name : str, optional
             Filename to save the screenshot. If None, uses a timestamped filename.
         """
-        self.update()  # Make sure the latest screen is fetched
         img = self.colour()  # Get the colour version of the screen
 
         if name is None:
@@ -99,22 +191,21 @@ class Screen:
         bool
             True if successful, False if green couldn't be avoided after retries.
         """
-        if self.update_filter_notifications(retries, delay, green_mask):
-            if name is None:
-                timestamp = time.strftime("%Y%m%d_%H%M%S")
-                name = f"screenshot_{timestamp}.png"
-            cv2.imwrite(f'screencaps/{name}', self.colour())
-            self.logger.debug(f"[Screen] Saved clean screenshot: {name}")
+        if name is None:
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            name = f"screenshot_{timestamp}.png"
+        cv2.imwrite(f'screencaps/{name}', self.filtered_image(retries, delay, green_mask))
+        self.logger.debug(f"[Screen] Saved clean screenshot: {name}")
         return False
 
-    def capture_scrollshot(self, file: str, overlap: int, offset: int, scroll_params, crop_area=None, max_shots: int = 50):
+    def capture_scrollshot(self, file: str, overlap: int, offset: int, scroll_params, crop_area=None,
+                           max_shots: int = 50):
         stitched = None
         prev_img = None
         similar_count = 0
 
         for i in range(max_shots):
             # Get the screenshot
-            self.update()
             img = self.colour()
 
             # Trim if we are sub-selecting a region
@@ -143,61 +234,6 @@ class Screen:
 
         cv2.imwrite(file, stitched)
 
-    def _update(self):
-        subprocess.run(["adb", "shell", "screencap", "-p", "/sdcard/screen.png"], stdout=subprocess.DEVNULL)
-        subprocess.run(["adb", "pull", "/sdcard/screen.png", self.CURRENT_SCREEN],
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-    def update(self):
-        """ Updates saved screen image and returns it """
-        if self.filter_notifications:
-            self.update_filter_notifications()
-        else:
-            self._update()
-        return cv2.imread(self.CURRENT_SCREEN)
-
-    def update_filter_notifications(self, retries: int = 5, delay: float = 1.0,
-                                    green_mask: tuple = None, debug: bool = False):
-        if green_mask is None:
-            green_mask = self.green_mask
-
-        for attempt in range(retries):
-            self._update()
-            img = self.colour()
-
-            # Convert to HSV for better color detection
-            hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-
-            # Define green color range (tweak if needed)
-            lower_green = np.array([50, 50, 50])
-            upper_green = np.array([90, 255, 255])
-
-            # Create a mask for green areas
-            mask = cv2.inRange(hsv, lower_green, upper_green)
-            mask[green_mask[2]:green_mask[3], green_mask[0]:green_mask[1]] = 0  # Skip any pictures
-
-            # Crop to notification area
-            crop = mask[self.green_select[2]:self.green_select[3], self.green_select[0]:self.green_select[1]]
-
-            green_pixels = cv2.countNonZero(crop)
-            total_pixels = crop.shape[0] * crop.shape[1]
-            green_ratio = green_pixels / total_pixels
-
-            if debug:
-                self.logger.debug(f"[Screen] Attempt {attempt + 1}: Green coverage = {green_ratio:.6f}")
-                cv2.imshow("Green locations", crop)
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
-
-            if green_ratio < 0.001:  # Less than 0.1% green pixels → accept
-                return True
-            else:
-                self.logger.debug("[Screen] Notification detected, retrying...")
-                time.sleep(delay)
-
-        self.logger.warning(f"[Screen] Failed to get clean screen after {retries} retries.")
-        return False
-
     def _load_template_image(self, template_path):
         img = cv2.imread(template_path)
         if img is None:
@@ -206,7 +242,6 @@ class Screen:
 
     def _locate_image(self, template_path: str, threshold: float = THRESHOLD):
         """ Returns max location and threshold value of found location. """
-        self.update()
         screen = self.grayscale()
         template = cv2.cvtColor(self._load_template_image(template_path), cv2.COLOR_BGR2GRAY)
         return locate_image(screen, template, threshold)
@@ -229,7 +264,6 @@ class Screen:
         List[Tuple[Tuple[int, int], float]]
             List of (position, match_value) tuples.
         """
-        self.update()
         screen = self.grayscale()
         template = cv2.cvtColor(self._load_template_image(template_path), cv2.COLOR_BGR2GRAY)
 
@@ -294,14 +328,16 @@ class Screen:
         bool
             If state was acquired/found.
         """
-        start_time = time.time()
+        full_template_path = f'resources/state/{template_path}.png'
+        deadline = time.monotonic() + timeout
 
-        while time.time() - start_time < timeout:
-            result = self._locate_image(f'resources/state/{template_path}.png', threshold)
-            if result is not None:
+        while time.monotonic() < deadline:
+            result = self._locate_image(full_template_path, threshold)
+            if result:
                 return True
             time.sleep(poll_interval)
-        raise StateNotReached(f"Failed to find state {template_path}")
+
+        raise StateNotReached(f"Failed to find state: {template_path}")
 
     def wait_for_any_state(self, template_paths: List[str], threshold: float = THRESHOLD, timeout: float = TIMEOUT,
                            poll_interval: float = POLL_INTERVAL) -> int:
