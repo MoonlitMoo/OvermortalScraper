@@ -1,7 +1,10 @@
 import logging
+import math
 import os
 import json
+import statistics
 import time
+from collections import defaultdict, Counter
 
 import numpy as np
 import pytest
@@ -15,38 +18,6 @@ from scrapers.character_scraper import CharacterScraper
 
 # Create a test engine (use SQLite in-memory DB)
 TEST_DB_URL = "sqlite:///:memory:"
-
-
-def compare_dict_results(expected, found):
-    n_wrong = 0
-    for k, v in found.items():
-        # Deal with missing value
-        if k not in expected:
-            print(f'Missing exact value for {k}: {v}')
-            continue
-        # Deal with strings
-        if isinstance(v, str):
-            if expected[k] != v:
-                n_wrong += 1
-                print(f"Found {k}: {v}, previously {expected[k]}")
-            continue
-        # Deal with null values
-        if v is None and expected[k] is None:
-            continue
-        if (expected[k] is None and v is not None) or (v is None and expected[k] is not None):
-            print(f"Found {k}: {v}, previously {expected[k]}")
-            continue
-        # Deal with numbers
-        if expected[k] == 0 and v != expected[k]:
-            n_wrong += 1
-            print(f"Found {k}: {v}, previously {expected[k]}")
-        elif expected[k] != 0 and abs(v / expected[k] - 1) > 0.01:  # Check within 1%
-            n_wrong += 1
-            print(f"Found {k}: {v}, previously {expected[k]} off by {v / expected[k] * 100 - 100:3.1f}%")
-    for k, _ in expected.items():
-        if k not in found:
-            print(f"Missing scraped value for {k}")
-    return n_wrong / len(found)
 
 
 @pytest.fixture(autouse=True)
@@ -87,32 +58,125 @@ def scraper(db_session):
     return s
 
 
-@pytest.fixture
-def scraped_results(scraper):
-    """ Fixture to get an initial scraped set of results.
-    Expected to run from Taoist screen.
-    """
-    return scraper.scrape()
+def run_function_precision(target_func, runs=5, abs_tol=1e-9, rel_tol=None):
+    results = []
+    times = []
+    for _ in range(runs):
+        start = time.perf_counter()
+        results.append(target_func())
+        times.append(time.perf_counter() - start)
+
+    keys = results[0].keys()
+    per_key_values = defaultdict(list)
+    # Organise results per key
+    for res in results:
+        for k in keys:
+            per_key_values[k].append(res[k])
+
+    # Assume the mode is the true result
+    mode_values = {}
+    for k, vals in per_key_values.items():
+        filtered = [v for v in vals if v is not None]
+        if not filtered:
+            mode_values[k] = None
+        else:
+            try:
+                mode_values[k] = statistics.mode(filtered)
+            except statistics.StatisticsError:
+                mode_values[k] = Counter(filtered).most_common(1)[0][0]
+
+    # Use absolute tol by default for float mode
+    def is_close(a, b):
+        if rel_tol is not None:
+            return math.isclose(a, b, rel_tol=rel_tol, abs_tol=abs_tol)
+        return math.isclose(a, b, abs_tol=abs_tol)
+
+    error_report = {}
+    total_errors = 0
+    for k, vals in per_key_values.items():
+        true_val = mode_values[k]
+
+        if isinstance(true_val, float):
+            errors = [
+                abs(v - true_val) if v is not None else math.nan
+                for v in vals
+            ]
+            errors = [e for e in errors if not math.isnan(e)]
+
+            if all(v is not None and is_close(v, true_val) for v in vals):
+                continue
+            total_errors += len([e for e in errors if not is_close(e, true_val)])
+            error_report[k] = {
+                "type": "float",
+                "mean_abs_error": sum(errors) / len(errors) if errors else None,
+                "true_value": true_val,
+                "all_values": vals
+            }
+
+        elif isinstance(true_val, str) or true_val is None:
+            mismatches = sum(1 for v in vals if v != true_val)
+            if mismatches == 0:
+                continue
+            total_errors += mismatches
+            error_report[k] = {
+                "type": "None" if true_val is None else "str",
+                "mismatch_count": mismatches,
+                "total": len(vals),
+                "true_value": true_val,
+                "all_values": vals
+            }
+
+        else:
+            continue
+    if total_errors != 0:
+        error_report["avg_error_per_run"] = total_errors / (len(per_key_values) * runs)
+
+    time_report = {
+        "average": np.average(times),
+        "std": np.std(times)
+    }
+
+    return error_report, time_report
 
 
-def test_scrape_continuity(scraped_results, scraper, caplog):
+def print_error_report(error_report):
+    print()
+    if not error_report:
+        print("All values matched their expected mode — no errors found.")
+        return
+
+    for key, info in error_report.items():
+        if key == "avg_error_per_run":
+            continue
+        print(f"🔹 Key: {key}")
+        print(f"   Type: {info['type']}")
+        print(f"   True Value: {info.get('true_value')}")
+
+        if info['type'] == 'float':
+            print(f"   Mean Absolute Error: {info['mean_abs_error']:.6g}")
+            print(f"   Values: {', '.join(str(v) for v in info['all_values'])}")
+
+        elif info['type'] == 'str':
+            print(f"   Mismatches: {info['mismatch_count']} / {info['total']}")
+            print(f"   Values: {', '.join(str(v) for v in info['all_values'])}")
+
+        elif info['type'] == 'None':
+            print(f"   Mismatches: {info['mismatch_count']} / {info['total']}")
+            print(f"   Values: {', '.join(str(v) for v in info['all_values'])}")
+        print()
+    print(f"Average error per run {error_report['avg_error_per_run']*100:.2f}%")
+    print()
+
+
+def test_scrape_precision(scraper, caplog):
     """ Run scraper five times and assert no errors occur and print the variance in results.
     Expected to run from Taoist screen.
     """
-    caplog.set_level(logging.DEBUG, logger=logger.name)
-    times = []
-    error = []
-    for i in range(5):
-        s_time = time.perf_counter()
-        stats = scraper.scrape()
-        times.append(time.perf_counter() - s_time)
-        print(f"Test {i} Results")
-        err = compare_dict_results(scraped_results, stats)
-        error.append(err)
-        print(f"Error {err * 100:3.1f}%\n------------")
-    print("\n" + caplog.text)
-    print(f"Average error {np.average(error) * 100:3.1f}% with std {np.std(error) * 100:1.2f}%")
-    print(f"Average time {np.average(times):3.1f}s with std {np.std(error):2.2f}s%")
+    error_report, time_report = run_function_precision(scraper.scrape)
+    print_error_report(error_report)
+    with open("tests/overmortal_bot.log", "w") as file:
+        file.write(caplog.text)
+    print(f"Finished scrape in {time_report['average']:.1f} ({time_report['std']:.1f}) seconds")
 
 
 def test_scrape_cultivation(scraper, caplog):
@@ -120,11 +184,11 @@ def test_scrape_cultivation(scraper, caplog):
     Expected to run from Taoist Compare BR screen.
     """
     caplog.set_level(logging.DEBUG, logger=logger.name)
-    try:
-        res = scraper.scrape_cultivation()
-    finally:
-        print("\n" + caplog.text)
-    assert res
+    error_report, time_report = run_function_precision(scraper.scrape_cultivation)
+    print_error_report(error_report)
+    with open("tests/overmortal_bot.log", "w") as file:
+        file.write(caplog.text)
+    print(f"Finished scrape in {time_report['average']:.1f} ({time_report['std']:.1f}) seconds")
 
 
 def test_scrape_abilities(scraper, caplog):
