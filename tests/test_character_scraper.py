@@ -1,3 +1,4 @@
+import functools
 import logging
 import math
 import os
@@ -23,6 +24,23 @@ TEST_DB_URL = "sqlite:///:memory:"
 @pytest.fixture(autouse=True)
 def fix_dirs():
     os.chdir("..")
+
+
+def save_log(test_func):
+    @functools.wraps(test_func)
+    def wrapper(*args, **kwargs):
+        caplog = kwargs.get("caplog", None)
+        caplog.set_level(logging.DEBUG, logger=logger.name)
+        try:
+            test_func(*args, **kwargs)
+        except Exception as e:
+            raise  # Re-raise to ensure the test still fails
+        finally:
+            # Save log
+            with open("tests/overmortal_bot.log", "w") as file:
+                file.write(caplog.text)
+
+    return wrapper
 
 
 @pytest.fixture(scope="function")
@@ -164,38 +182,34 @@ def print_error_report(error_report):
             print(f"   Mismatches: {info['mismatch_count']} / {info['total']}")
             print(f"   Values: {', '.join(str(v) for v in info['all_values'])}")
         print()
-    print(f"Average error per run {error_report['avg_error_per_run']*100:.2f}%")
+    print(f"Average error per run {error_report['avg_error_per_run'] * 100:.2f}%")
     print()
 
 
+@save_log
 def test_scrape_precision(scraper, caplog):
     """ Run scraper five times and assert no errors occur and print the variance in results.
     Expected to run from Taoist screen.
     """
     error_report, time_report = run_function_precision(scraper.scrape)
     print_error_report(error_report)
-    with open("tests/overmortal_bot.log", "w") as file:
-        file.write(caplog.text)
     print(f"Finished scrape in {time_report['average']:.1f} ({time_report['std']:.1f}) seconds")
 
-
+@save_log
 def test_scrape_cultivation(scraper, caplog):
     """ Checks we can get the cultivations.
     Expected to run from Taoist Compare BR screen.
     """
-    caplog.set_level(logging.DEBUG, logger=logger.name)
     error_report, time_report = run_function_precision(scraper.scrape_cultivation)
     print_error_report(error_report)
-    with open("tests/overmortal_bot.log", "w") as file:
-        file.write(caplog.text)
     print(f"Finished scrape in {time_report['average']:.1f} ({time_report['std']:.1f}) seconds")
 
 
+@save_log
 def test_scrape_abilities(scraper, caplog):
     """ Checks we can get the ability names.
     Expected to run from Taoist Compare BR screen.
     """
-    caplog.set_level(logging.DEBUG, logger=logger.name)
     res = scraper.scrape_abilities()
     print("\n" + caplog.text)
     assert res
@@ -209,3 +223,18 @@ def test_scrape_pets(scraper, caplog):
     res = scraper.scrape_pets()
     print("\n" + caplog.text)
     assert res
+
+
+def test_update_speeds(scraper):
+    tests = 50
+    screen = scraper.screen
+    times = []
+    for _ in range(tests):
+        start = time.perf_counter_ns()
+        screen.colour()
+        times.append(time.perf_counter_ns() - start)
+    avg = np.average(times)
+    std = np.std(times)
+    screen.stop()
+    print()
+    print(f"Avg update time {avg / 1e9:.3f} ({std / 1e9:.3f}) s")
