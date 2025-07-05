@@ -73,7 +73,9 @@ def scraper(db_session):
 
     service = CharacterScraperService(db=db_session)
     s = CharacterScraper(service, own_character=False)
-    return s
+    yield s
+
+    s.stop()
 
 
 def run_function_precision(target_func, runs=5, abs_tol=1e-9, rel_tol=None):
