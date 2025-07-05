@@ -1,3 +1,4 @@
+import copy
 import subprocess
 import threading
 import time
@@ -34,6 +35,7 @@ class Screen:
         self.green_mask = (0, 0, 0, 0)
         self.green_select = (0, 1080, 700, 900)
         self._image_lock = threading.Lock()
+        self._current_screen = None
 
         try:
             # Check connected devices
@@ -74,12 +76,14 @@ class Screen:
         self._streaming = True
         if frame is not None:
             with self._image_lock:
-                cv2.imwrite(self.CURRENT_SCREEN, frame)
+                self._current_screen = frame.copy()
 
     def _current_image(self):
         """ Retrieves current image from file. """
         with self._image_lock:
-            return cv2.imread(self.CURRENT_SCREEN)
+            if self._current_screen is None:
+                return None
+            return self._current_screen.copy()
 
     def colour(self):
         """ Returns current screen image in colour. """
@@ -146,7 +150,7 @@ class Screen:
                 return img
             else:
                 self.logger.debug("[Screen] Notification detected, retrying...")
-                time.sleep(delay)
+                threading.Event().wait(delay)
 
         self.logger.warning(f"[Screen] Failed to get clean screen after {retries} retries.")
         return self._current_image()
@@ -226,11 +230,11 @@ class Screen:
                     similar_count = 0
                 stitched = stitch_images(stitched, img, overlap, offset)
             else:
-                stitched = img
+                stitched = img.copy()
 
-            prev_img = img
+            prev_img = img.copy()
             self.swipe(*scroll_params)
-            time.sleep(.2)
+            threading.Event().wait(.2)
 
         cv2.imwrite(file, stitched)
 
@@ -335,7 +339,7 @@ class Screen:
             result = self._locate_image(full_template_path, threshold)
             if result:
                 return True
-            time.sleep(poll_interval)
+            threading.Event().wait(poll_interval)
 
         raise StateNotReached(f"Failed to find state: {template_path}")
 

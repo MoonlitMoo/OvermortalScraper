@@ -1,4 +1,5 @@
 import re
+import threading
 import time
 
 import cv2
@@ -22,6 +23,19 @@ class CharacterScraper:
         self.processor = ScreenshotProcesser()
         self.own_character = own_character
 
+    def stop(self):
+        self.screen.stop()
+
+    def _sleep(self, dur: float):
+        """ Sleeps thread for duration
+
+        Parameters
+        ----------
+        dur : float
+            Duration in seconds.
+        """
+        threading.Event().wait(dur)
+
     def get_start_loc(self, full_img, template_path, x_offset):
         """ Gets location of button given the search condition.
 
@@ -35,7 +49,6 @@ class CharacterScraper:
             Offset to apply to x coordinate
         """
         # Find location
-        full_img = cv2.imread(screenshot_path)
         template_img = cv2.cvtColor(cv2.imread(f'resources/character_scraper/{template_path}.png'), cv2.COLOR_BGR2GRAY)
 
         text_area = locate_area(cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY), template_img, 0.9)
@@ -138,10 +151,10 @@ class CharacterScraper:
         """
         # Select item
         self.screen.tap(x, y)
-        time.sleep(0.75)
+        self._sleep(0.75)  # Todo, find a way to find state of opened image.
 
         # Read text
-        img = self.screen.update()
+        img = self.screen.colour()
         name_bbox = (300, 1000, 250, 420)
 
         all_text = self.processor.extract_text_from_area(img, name_bbox, all_text=True)
@@ -193,11 +206,11 @@ class CharacterScraper:
         """
         # Open report screen by tapping more and report
         self.screen.tap(200, 1225)
-        time.sleep(0.1)
+
         self.screen.tap(400, 990)
-        time.sleep(0.1)
+        self._sleep(0.1)  # Todo: get state
         # Capture text of name
-        img = self.screen.update()
+        img = self.screen.colour()
         all_text = self.processor.extract_text_from_area(
             img, (100, 950, 550, 650), all_text=True, use_name_reader=True)
         # Sanitise the name
@@ -205,7 +218,7 @@ class CharacterScraper:
         logger.debug(f"Scraped name '{text}'")
         # Go back to home screen
         self.screen.tap(500, 1500)
-        time.sleep(0.1)
+        self._sleep(0.1)  # todo: get state
         self.screen.tap(500, 1500)
         logger.info("[SCRAPE_NAME] Scraped name")
         return {"name": text}
@@ -228,7 +241,7 @@ class CharacterScraper:
             ("mythic", (239, 41, 50)),
         ]
         # Invert image to get dark text with light border.
-        img = self.screen.update()
+        img = self.screen.colour()
         inverted_img = cv2.bitwise_not(img)
         valid_pets = self.service.get_pet_names()
         # Zip the column to the formation array position
@@ -266,7 +279,7 @@ class CharacterScraper:
         if not self.screen.find("character_scraper/br_state"):
             self.screen.tap(800, 1800)
             self.screen.wait_for_state("../character_scraper/br_state")
-        img = self.screen.update()
+        img = self.screen.colour()
         value = self.processor.extract_text_from_area(img, (820, 1000, 250, 300))
         logger.debug(f"[SCRAPE_TOTAL_BR] Found '{value}' and parsed as '{parse_text_number(value)}'")
         logger.info(f"[SCRAPE_TOTAL_BR] Finished")
@@ -287,9 +300,8 @@ class CharacterScraper:
             self.screen.tap(800, 1800)
             self.screen.wait_for_state("../character_scraper/br_state")
         # Find the character details and click it
-        self.screen.update()
         try:
-            _, character_y = self.get_start_loc(self.screen.CURRENT_SCREEN, 'br/character', 0)
+            _, character_y = self.get_start_loc(self.screen.colour(), 'br/character', 0)
         except Exception:
             logger.error("[SCRAPE_CULTIVATION] Failed to find character details")
             return {}
@@ -299,7 +311,7 @@ class CharacterScraper:
 
         result = {}
         # Get the 4 cultivation levels and go back
-        img = self.screen.update()
+        img = self.screen.colour()
         cultivation_area = (250, 490, 950, 1300) if self.own_character else (700, 1000, 950, 1300)
         text = ' '.join(self.processor.extract_text_from_area(
             img, cultivation_area, all_text=True, faint_text=self.own_character))
@@ -326,31 +338,47 @@ class CharacterScraper:
         self.screen.tap(100, 1800)
 
         # Scroll to Daemonfae and open details
-        daemonfae_y, _iter = None, 0
-        while not daemonfae_y and _iter < 5:
+        max_attempts = 5
+        attempt = 0
+        daemonfae_y = None
+
+        while daemonfae_y is None and attempt < max_attempts:
             try:
-                self.screen.update()
-                _, daemonfae_y = self.get_start_loc(self.screen.CURRENT_SCREEN, 'br/daemonfae', 0)
-            except:
+                _, daemonfae_y = self.get_start_loc(self.screen.colour(), 'br/daemonfae', 0)
+            except Exception as e:
+                pass
+
+            if daemonfae_y is None:
                 self.screen.swipe(820, 1300, 820, 1000)
                 self.screen.tap(820, 1300)  # Stop the scroll
-                _iter += 1
+                self._sleep(0.1)  # Wait slightly before continuing since it breaks otherwise
+                attempt += 1
+
+        if daemonfae_y is None:
+            raise TimeoutError("Failed to locate 'br/daemonfae' after 5 attempts.")
+
         self.screen.tap(detail_x, daemonfae_y + detail_y_offset)
         self.screen.wait_for_state("character_screen/daemonfae_exp")
-
+        self._sleep(.1)
         # Read stage + alignment
-        img = self.screen.update()
+        img = self.screen.colour()
         daemonfae_area = (250, 490, 960, 1050) if self.own_character else (700, 1000, 960, 1050)
         text = ' '.join(self.processor.extract_text_from_area(
             img, daemonfae_area, all_text=True, faint_text=self.own_character))
         logger.debug(f"[SCRAPE_CULTIVATION] Read daemonfae text '{text}'")
-        # Match e.g., "Demon IV (Late)" or "Divinity 5 (Early)"
-        pattern = r'\b([A-Za-z]+)\s+([IVX]+|\d+)\s*\(\s*(early|middle|late)\s*\)'
-        match = re.search(pattern, text, re.IGNORECASE)
-        if not match:
+
+        # Expect e.g., "Demon IV (Late) G5" or "Divinity 5 (Early) G6"
+        parts = text.split(" ")
+        if len(parts) < 3:
             raise ValueError(f"Could not parse daemonfae alignment string {text}.")
 
-        alignment, stage_raw, minor_stage = match.groups()
+        alignment, stage_raw, minor_stage = parts[:3]
+        alignment = self.validate_string(
+            alignment.lower(), ['demon', 'divinity'], "SCRAPE_CULTIVATION", "alignment")
+        minor_stage = minor_stage.strip(")").strip("(")
+        minor_stage = self.validate_string(
+            minor_stage.lower(), ['early', 'middle', 'late'], "SCRAPE_CULTIVATION", "alignment minor stage")
+
         # Convert stage to integer (roman or numeric)
         roman_to_int = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7, "VIII": 8, "IX": 9, "X": 10}
         stage_raw_upper = stage_raw.upper()
@@ -359,14 +387,16 @@ class CharacterScraper:
         elif stage_raw.isdigit():
             stage = int(stage_raw)
         else:
+            cv2.imwrite("screencaps/debug/scrape_cultivation.png", img)
             raise ValueError(f"Unrecognized stage value: {stage_raw}")
+
         result.update({
             "alignment": alignment.upper(),
             "daemonfae_stage": stage,
             "daemonfae_minor_stage": minor_stage.upper()
         })
         self.screen.tap(100, 1800)
-        time.sleep(.25)
+        self._sleep(0.25)  # todo get state
         logger.debug(f"Parsed levels '{result}'")
         logger.info("[SCRAPE_CULTIVATION] Finished scraping")
         return result
@@ -384,9 +414,8 @@ class CharacterScraper:
             self.screen.tap(800, 1800)
             self.screen.wait_for_state("../character_scraper/br_state")
         # Find the ability details and click it
-        self.screen.update()
         try:
-            _, character_y = self.get_start_loc(self.screen.CURRENT_SCREEN, 'br/ability', 0)
+            _, character_y = self.get_start_loc(self.screen.colour(), 'br/ability', 0)
         except Exception:
             logger.error("[SCRAPE_ABILITIES] Failed to find character details")
             return {}
@@ -400,8 +429,7 @@ class CharacterScraper:
         cols = [1005, 1215]
         x_len, y_len = 160, 95
         # Colour invert so that the light words with dark border -> dark words with light border
-        img = self.screen.update()
-        img = cv2.bitwise_not(img)
+        img = cv2.bitwise_not(self.screen.colour())
         i = 0
         valid_abilities = self.service.get_ability_names()
         for x in rows:
@@ -414,7 +442,7 @@ class CharacterScraper:
                 i += 1
         # Hit back button
         self.screen.tap(100, 1800)
-        time.sleep(.25)
+        self._sleep(0.25)  # todo get state
         logger.info("[SCRAPE_ABILITIES] Finished scraping")
         return results
 
@@ -566,8 +594,8 @@ class CharacterScraper:
             # Get pets before opening compare screen
             full_stats.update(self.scrape_pets())
             # Open compare screen by clicking the button
-            time.sleep(0.25)
             self.screen.tap_button("character_screen/compare_button")
+            self._sleep(0.25)  # todo get state
             # Set screen masking and filtering
             self.screen.filter_notifications = True
             self.screen.green_select = (590, 1080, 800, 900)
