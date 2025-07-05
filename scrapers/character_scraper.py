@@ -22,7 +22,18 @@ class CharacterScraper:
         self.processor = ScreenshotProcesser()
         self.own_character = own_character
 
-    def get_start_loc(self, screenshot_path, template_path, x_offset):
+    def get_start_loc(self, full_img, template_path, x_offset):
+        """ Gets location of button given the search condition.
+
+        Parameters
+        ----------
+        full_img : img
+            The image to search
+        template_path : str
+            The image to search for
+        x_offset : int
+            Offset to apply to x coordinate
+        """
         # Find location
         full_img = cv2.imread(screenshot_path)
         template_img = cv2.cvtColor(cv2.imread(f'resources/character_scraper/{template_path}.png'), cv2.COLOR_BGR2GRAY)
@@ -41,6 +52,7 @@ class CharacterScraper:
         return start_x, start_y
 
     def get_value(self, screenshot_path, start_x, start_y, debug=False):
+        """ Gets the value from a saved image and search location. """
         box_width = 230
         box_height = 50
 
@@ -166,7 +178,7 @@ class CharacterScraper:
 
         # Return back to main screen
         self.screen.tap(500, 1800)
-        time.sleep(0.75)
+        self.screen.wait_for_state("character_screen/compare_br")
         return item
 
     def scrape_name(self):
@@ -554,8 +566,8 @@ class CharacterScraper:
             # Get pets before opening compare screen
             full_stats.update(self.scrape_pets())
             # Open compare screen by clicking the button
-            self.screen.tap_button("../character_scraper/compare_button")
             time.sleep(0.25)
+            self.screen.tap_button("character_screen/compare_button")
             # Set screen masking and filtering
             self.screen.filter_notifications = True
             self.screen.green_select = (590, 1080, 800, 900)
