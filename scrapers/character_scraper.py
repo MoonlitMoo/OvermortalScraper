@@ -22,13 +22,13 @@ class CharacterScraper:
         self.processor = ScreenshotProcesser()
         self.own_character = own_character
 
-    def get_start_loc(self, full_img, template_path, x_offset):
+    def get_start_loc(self, screenshot_path, template_path, x_offset):
         """ Gets location of button given the search condition.
 
         Parameters
         ----------
-        full_img : img
-            The image to search
+        screenshot_path : str
+            The image path to load and search
         template_path : str
             The image to search for
         x_offset : int
@@ -567,7 +567,9 @@ class CharacterScraper:
             full_stats.update(self.scrape_pets())
             # Open compare screen by clicking the button
             time.sleep(0.25)
-            self.screen.tap_button("character_screen/compare_button")
+            if not self.screen.tap_button("character_screen/compare_button"):
+                logger.warning("[SCRAPE_TOTAL_BR] Failed to click compare br button")
+                return {}
             # Set screen masking and filtering
             self.screen.filter_notifications = True
             self.screen.green_select = (590, 1080, 800, 900)

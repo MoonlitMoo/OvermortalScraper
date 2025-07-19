@@ -195,6 +195,7 @@ def test_scrape_precision(scraper, caplog):
     print_error_report(error_report)
     print(f"Finished scrape in {time_report['average']:.1f} ({time_report['std']:.1f}) seconds")
 
+
 @save_log
 def test_scrape_cultivation(scraper, caplog):
     """ Checks we can get the cultivations.
