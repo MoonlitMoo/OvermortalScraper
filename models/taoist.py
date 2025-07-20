@@ -2,7 +2,7 @@ from .base import Base
 from sqlalchemy import Column, Integer, Float, String, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 
-from models.cultivation import CultivationMinorStage, Divinity, DivinityStage
+from models.cultivation import CultivationMinorStage, Divinity
 
 
 class Taoist(Base):
@@ -51,24 +51,24 @@ class Taoist(Base):
     ghostia_minor_stage = Column(Enum(CultivationMinorStage))
     # Divine cultivation
     alignment = Column(Enum(Divinity))
-    daemonfae_stage = Column(Enum(DivinityStage))
+    daemonfae_stage = Column(Integer)
     daemonfae_minor_stage = Column(Enum(CultivationMinorStage))
 
     # BR breakdown
-    character_br = Column(Float)
-    technique_br = Column(Float)
-    relic_br = Column(Float)
-    ability_br = Column(Float)
-    curio_br = Column(Float)
-    pet_br = Column(Float)
-    zodiac_br = Column(Float)
-    law_br = Column(Float)
-    immortal_br = Column(Float)
-    daemonfae_br = Column(Float)
-    divinity_br = Column(Float)
-    field_br = Column(Float)
-    samsara_br = Column(Float)
-    miniworld_br = Column(Float)
+    character = Column(Float)
+    technique = Column(Float)
+    relic = Column(Float)
+    ability = Column(Float)
+    curio = Column(Float)
+    pet = Column(Float)
+    zodiac = Column(Float)
+    law = Column(Float)
+    immortal = Column(Float)
+    daemonfae = Column(Float)
+    divinity = Column(Float)
+    field = Column(Float)
+    samsara = Column(Float)
+    miniworld = Column(Float)
 
     # Stats
     hp = Column(Float)

@@ -32,16 +32,3 @@ class Divinity(enum.Enum):
     DIVINE = "DIVINE"
     DEMON = "DEMON"
     None_ = "NONE"
-
-
-class DivinityStage(enum.Enum):
-    I = "I"
-    II = "II"
-    III = "III"
-    IV = "IV"
-    V = "V"
-    VI = "VI"
-    VII = "VII"
-    VIII = "VIII"
-    IX = "IX"
-    X = "X"
