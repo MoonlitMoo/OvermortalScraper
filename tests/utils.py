@@ -171,5 +171,15 @@ def print_error_report(error_report):
 
 
 @pytest.fixture(autouse=True)
-def fix_dirs():
-    os.chdir("..")
+def fix_dirs(target_dir: str = "OvermortalPlayer"):
+    current = os.getcwd()
+    while True:
+        if os.path.basename(current) == target_dir:
+            break
+        parent = os.path.dirname(current)
+        if parent == current:
+            raise FileNotFoundError(f"Directory '{target_dir}' not found in path.")
+        os.chdir(parent)
+        current = parent
+        if os.path.basename(current) == target_dir:
+            break
