@@ -15,5 +15,5 @@ class CharacterScraperService:
     def get_pet_names(self):
         return [a.name for a in self.db.query(Pet).all()]
 
-    def get_relic_names(self):
-        return [a.name for a in self.db.query(Relic).all()]
+    def get_relic_names(self, relic_type):
+        return [relic.name for relic in self.db.query(Relic).filter(Relic.relic_type == relic_type).all()]

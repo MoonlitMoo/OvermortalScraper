@@ -427,13 +427,14 @@ class CharacterScraper:
 
         # Weapon
         logger.debug(f"Getting weapon")
-        values["weapon"] = self.scrape_item(col1, row1, Weapon, check_double_path=True)
+        values["weapon"] = self.scrape_item(col1, row1, self.service.get_relic_names("WEAPON"), check_double_path=True)
         # Armour
         logger.debug(f"Getting armour")
-        values["armour"] = self.scrape_item(col1, row2, Armour, check_double_path=True)
+        values["armour"] = self.scrape_item(col1, row2, self.service.get_relic_names("ARMOR"), check_double_path=True)
         # Accessory
         logger.debug(f"Getting accessory")
-        values["accessory"] = self.scrape_item(col1, row3, Accessory, check_double_path=True)
+        values["accessory"] = self.scrape_item(
+            col1, row3, self.service.get_relic_names("ACCESSORY"), check_double_path=True)
 
         # Curio
         for i, r in enumerate([row1, row2, row3]):
@@ -441,13 +442,13 @@ class CharacterScraper:
             values[f"curio_{i + 1}"] = self.scrape_item(col2, r, Curio, full_match=True)
 
         # General relics
-        relic_names = self.service.get_relic_names()
+        general_relics = self.service.get_relic_names("GENERAL")
         i = 0
         for c in [col1, col2]:
             for r in [880, 1000, 1130]:
                 i += 1
                 logger.debug(f"Getting relic_{i}")
-                values[f"relic_{i}"] = self.scrape_item(c, r, relic_names)
+                values[f"relic_{i}"] = self.scrape_item(c, r, general_relics)
         logger.info("[SCRAPE_RELICS] Finished scraping relics")
         return values
 
