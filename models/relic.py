@@ -3,11 +3,7 @@ from sqlalchemy.orm import relationship
 from models.base import Base
 import enum
 
-
-class Divinity(enum.Enum):
-    DIVINE = "DIVINE"
-    DEMON = "DEMON"
-    None_ = "NONE"
+from models.cultivation import Divinity
 
 
 class RelicType(enum.Enum):
@@ -18,7 +14,7 @@ class RelicType(enum.Enum):
 
 
 class Relic(Base):
-    __tablename__ = "relics"
+    __tablename__ = "Relic"
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
