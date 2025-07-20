@@ -10,7 +10,6 @@ from screen import Screen
 from service.char_scraper_service import CharacterScraperService
 from scrapers.screenshot_processor import ScreenshotProcesser, parse_text_number
 from image_functions import locate_area
-from data_types import *
 
 
 class CharacterScraper:
@@ -437,9 +436,10 @@ class CharacterScraper:
             col1, row3, self.service.get_relic_names("ACCESSORY"), check_double_path=True)
 
         # Curio
+        curios = self.service.get_curio_names()
         for i, r in enumerate([row1, row2, row3]):
             logger.debug(f"Getting curio_{i + 1}")
-            values[f"curio_{i + 1}"] = self.scrape_item(col2, r, Curio, full_match=True)
+            values[f"curio_{i + 1}"] = self.scrape_item(col2, r, curios, full_match=True)
 
         # General relics
         general_relics = self.service.get_relic_names("GENERAL")
