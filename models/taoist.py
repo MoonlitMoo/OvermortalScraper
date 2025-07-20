@@ -1,10 +1,8 @@
+from .base import Base
 from sqlalchemy import Column, Integer, Float, String, ForeignKey, Enum
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
 
 from models.cultivation import CultivationMinorStage, Divinity, DivinityStage
-
-Base = declarative_base()
 
 
 class Taoist(Base):
@@ -16,9 +14,9 @@ class Taoist(Base):
     total_br = Column(Float, nullable=False)
 
     # Relic + curios
-    weapon_id = Column(Integer, ForeignKey("relics.id"))
-    armour_id = Column(Integer, ForeignKey("relics.id"))
-    accessory_id = Column(Integer, ForeignKey("relics.id"))
+    weapon_id = Column(Integer, ForeignKey("Relic.id"))
+    armour_id = Column(Integer, ForeignKey("Relic.id"))
+    accessory_id = Column(Integer, ForeignKey("Relic.id"))
     curio_1_id = Column(Integer, ForeignKey("Curio.id"))
     curio_2_id = Column(Integer, ForeignKey("Curio.id"))
     curio_3_id = Column(Integer, ForeignKey("Curio.id"))
@@ -30,8 +28,11 @@ class Taoist(Base):
     relic_6_id = Column(Integer, ForeignKey("Relic.id"))
     # Pet + Ability
     pet_front_id = Column(Integer, ForeignKey("Pet.id"))
+    pet_front_rarity = Column(Integer, ForeignKey("RarityLevel.id"))
     pet_left_id = Column(Integer, ForeignKey("Pet.id"))
+    pet_left_rarity = Column(Integer, ForeignKey("RarityLevel.id"))
     pet_right_id = Column(Integer, ForeignKey("Pet.id"))
+    pet_right_rarity = Column(Integer, ForeignKey("RarityLevel.id"))
     ability_0_id = Column(Integer, ForeignKey("Ability.id"))
     ability_1_id = Column(Integer, ForeignKey("Ability.id"))
     ability_2_id = Column(Integer, ForeignKey("Ability.id"))
@@ -54,20 +55,20 @@ class Taoist(Base):
     daemonfae_minor_stage = Column(Enum(CultivationMinorStage))
 
     # BR breakdown
-    character = Column(Float)
-    technique = Column(Float)
-    relic = Column(Float)
-    ability = Column(Float)
-    curio = Column(Float)
-    pet = Column(Float)
-    zodiac = Column(Float)
-    law = Column(Float)
-    immortal = Column(Float)
-    daemonfae = Column(Float)
-    divinity = Column(Float)
-    field = Column(Float)
-    samsara = Column(Float)
-    miniworld = Column(Float)
+    character_br = Column(Float)
+    technique_br = Column(Float)
+    relic_br = Column(Float)
+    ability_br = Column(Float)
+    curio_br = Column(Float)
+    pet_br = Column(Float)
+    zodiac_br = Column(Float)
+    law_br = Column(Float)
+    immortal_br = Column(Float)
+    daemonfae_br = Column(Float)
+    divinity_br = Column(Float)
+    field_br = Column(Float)
+    samsara_br = Column(Float)
+    miniworld_br = Column(Float)
 
     # Stats
     hp = Column(Float)

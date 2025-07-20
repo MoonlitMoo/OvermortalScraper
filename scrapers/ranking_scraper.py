@@ -58,6 +58,16 @@ class RankingScraper:
         return name, br_val
 
     def scrape_taoist(self, row_x, row_y):
+        name, br = self.scrape_taoist_card(row_x, row_y)
+        # Get all records for taoists by this name, assume no duplicate names.
+        records = self.service.get_taoist_records(name)
+        # Then, if there are any records < 1% BR from this, we will skip as more or less the same being.
+        skip = any([abs(r[2]/br - 1) < 0.01 for r in records])
+        if not skip:
+            self.screen.tap(row_x, row_y)
+            time.sleep(.5)
+            taoist_data = self.taoist_scraper.scrape()
+
         # Scrape the taoist data
         # Determine if update
         # Determine if duel

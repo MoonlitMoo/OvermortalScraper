@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from .utils import db_session, fix_dirs
@@ -77,3 +79,14 @@ def test_get_all_taoists(scraper):
         total += 1
         print(f"Rank {scraper.current_taoist}: '{n}', {b:.3e} BR")
     assert total == 100, "Didn't find all taoists"
+
+
+def test_add_taoist(scraper):
+    with open('temp.json') as file:
+        data = json.load(file)
+
+    scraper.service.add_taoist_from_scrape(data)
+
+
+def test_scrape_taoist(scraper):
+    pass
