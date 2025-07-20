@@ -1,7 +1,7 @@
 import csv
 from pathlib import Path
 
-from models import Ability, RarityLevel, Pet, Relic
+from models import Ability, RarityLevel, Pet, Relic, Curio
 from models.base import Base
 from db.session import engine, SessionLocal
 from models.cultivation import CultivationStage, CultivationType
@@ -17,6 +17,7 @@ def init_db():
     seed_abilities(session)
     seed_pet(session)
     seed_relics(session)
+    seed_curios(session)
 
     session.close()
 
@@ -125,4 +126,30 @@ def seed_relics(session, csv_path: str = 'resources/db_seed/relics.csv'):
             exists = session.query(Relic).filter_by(name=name).first()
             if not exists:
                 session.add(Relic(name=name, relic_type=relic_type, cultivation_type=c_type_obj, divinity=divinity))
+    session.commit()
+
+
+def seed_curios(session, csv_path: str = "resources/db_seed/curios.csv"):
+    path = Path(csv_path)
+    if not path.exists():
+        print(f"Seed file not found: {csv_path}")
+        return
+
+    with path.open("r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            name = row.get("name", "").strip().upper()
+            rarity = row.get("rarity", "").strip().upper()
+
+            if not (name and rarity):
+                continue
+
+            rarity_obj = session.query(RarityLevel).filter_by(name=rarity).first()
+            if not rarity_obj:
+                print(f"Skipping curio '{name}' — unknown rarity level '{rarity}'")
+                continue
+
+            exists = session.query(Curio).filter_by(name=name, rarity=rarity_obj).first()
+            if not exists:
+                session.add(Curio(name=name, rarity=rarity_obj))
     session.commit()

@@ -12,7 +12,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from db.init import seed_cultivation_levels, seed_abilities, seed_rarities, seed_pet, seed_relics
+from db.init import seed_cultivation_levels, seed_abilities, seed_rarities, seed_pet, seed_relics, seed_curios
 from log import logger
 from models.base import Base
 from scrapers.character_scraper import CharacterScraper
@@ -60,6 +60,7 @@ def db_session():
     seed_abilities(session)
     seed_pet(session)
     seed_relics(session)
+    seed_curios(session)
 
     try:
         yield session
