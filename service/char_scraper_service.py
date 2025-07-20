@@ -7,7 +7,7 @@ class CharacterScraperService:
         self.db = db
 
     def get_cultivation_stages(self):
-        return self.db.query(CultivationStage).all()
+        return [s.name for s in self.db.query(CultivationStage).all()]
 
     def get_ability_names(self):
         return [a.name for a in self.db.query(Ability).all()]

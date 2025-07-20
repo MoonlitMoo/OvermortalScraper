@@ -6,6 +6,7 @@ import jellyfish
 import numpy as np
 
 from log import logger
+from models.cultivation import CultivationMinorStage
 from screen import Screen
 from service.char_scraper_service import CharacterScraperService
 from scrapers.screenshot_processor import ScreenshotProcesser, parse_text_number
@@ -293,29 +294,31 @@ class CharacterScraper:
         result = {}
         # Get the 4 cultivation levels and go back
         img = self.screen.update()
-        cultivation_area = (250, 490, 950, 1300) if self.own_character else (700, 1000, 950, 1300)
-        text = ' '.join(self.processor.extract_text_from_area(
-            img, cultivation_area, all_text=True, faint_text=self.own_character))
-        label_to_type = {"M": "magicka", "C": "corporia", "S": "swordia", "G": "ghostia"}
-        # Check for each stage pattern
-        for level in self.service.get_cultivation_stages():
-            if level.name == "NOVICE":
-                # Match: e.g., "Novice (G)" — no stage required
-                pattern = rf'\b({re.escape(level.name)})\s*\(\s*([A-Z])\s*\)'
-            else:
-                # Match: e.g., "Voidbreak (M) Early"
-                pattern = rf'\b({re.escape(level.name)})\s*\(\s*([A-Z])\s*\)\s*(early|middle|late)'
-            matches = re.finditer(pattern, text, re.IGNORECASE)
-            for match in matches:
-                # If we find a match, grab the label (type) and add the level (stage) and minor stage into results.
-                groups = match.groups()
-                level_str, label = groups[0], groups[1].upper()
-                stage = groups[2].lower() if len(groups) > 2 else None
+        cultivation_x = (250, 490) if self.own_character else (700, 1000)
+        stage_names = self.service.get_cultivation_stages()
+        minor_stage_names = [v.value for v in CultivationMinorStage]
+        # Iterate through the different cultivation blocks
+        for y, name in zip([1010, 1100, 1185, 1270], ["magicka", "corporia", "swordia", "ghostia"]):
+            area = (*cultivation_x, y-40, y+40)
+            text = ' '.join(self.processor.extract_text_from_area(
+                img, area, all_text=True, faint_text=self.own_character))
+            # Get the stage
+            stage = text.split(' ')[0].upper()
+            stage, _ = self.validate_string(stage, stage_names, "SCRAPE_CULTIVATION", "stage")
+            stage_id = self.service.get_cultivate_stage_id(stage)
+            minor_stage = None
+            # If not novice, try minor stage on all text blocks
+            if stage_id != 1:
+                text_parts = [t.upper() for t in text.split(' ')]
+                for ms in minor_stage_names:
+                    if ms in text_parts:
+                        minor_stage = ms
+                        break
+                if minor_stage is None:
+                    logger.warning(f"[SCRAPE_CULTIVATION] Missing minor stage for {stage}")
 
-                if label in label_to_type:
-                    name = label_to_type[label]
-                    result[f"{name}_stage_id"] = self.service.get_cultivate_stage_id(level.name)
-                    result[f"{name}_minor_stage"] = stage.upper() if stage else None
+            result[f"{name}_stage_id"] = stage_id
+            result[f"{name}_minor_stage"] = minor_stage
         self.screen.tap(100, 1800)
 
         # Scroll to Daemonfae and open details
