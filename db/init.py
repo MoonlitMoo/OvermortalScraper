@@ -5,7 +5,7 @@ from models import Ability, RarityLevel, Pet, Relic
 from models.base import Base
 from db.session import engine, SessionLocal
 from models.cultivation import CultivationStage, CultivationType
-from models.relic import Divinity
+from models.relic import Divinity, RelicType
 
 
 def init_db():
@@ -98,10 +98,17 @@ def seed_relics(session, csv_path: str = 'resources/db_seed/relics.csv'):
         reader = csv.DictReader(f)
         for row in reader:
             name = row.get("name", "").strip().upper()
-            c_type_name = row.get("type", "").strip().upper()
+            r_type_name = row.get("relic_type", "").strip().upper()
+            c_type_name = row.get("cultivation_type", "").strip().upper()
             divinity_str = row.get("divinity", "").strip().upper()
 
             if not (name and c_type_name and divinity_str):
+                continue
+
+            try:
+                relic_type = RelicType[r_type_name]
+            except KeyError:
+                print(f"Invalid relic type '{r_type_name}' in relic '{name}'")
                 continue
 
             c_type_obj = session.query(CultivationType).filter_by(name=c_type_name).first()
@@ -117,5 +124,5 @@ def seed_relics(session, csv_path: str = 'resources/db_seed/relics.csv'):
 
             exists = session.query(Relic).filter_by(name=name).first()
             if not exists:
-                session.add(Relic(name=name, cultivation_type=c_type_obj, divinity=divinity))
+                session.add(Relic(name=name, relic_type=relic_type, cultivation_type=c_type_obj, divinity=divinity))
     session.commit()

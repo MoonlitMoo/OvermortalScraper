@@ -1,27 +1,6 @@
 from enum import Enum
 
 
-class Weapon(Enum):
-    FAN = "FAN"
-    DOUBLE_PATH_FAN = "DOUBLE_PATH_FAN"
-    SWORD = "SWORD"
-    DOUBLE_PATH_SWORD = "DOUBLE_PATH_SWORD"
-
-
-class Armour(Enum):
-    ARMOR = "ARMOR"
-    DOUBLE_PATH_ARMOR = "DOUBLE_PATH_ARMOR"
-    ROBE = "ROBE"
-    DOUBLE_PATH_ROBE = "DOUBLE_PATH_ROBE"
-
-
-class Accessory(Enum):
-    PENDANT = "PENDANT"
-    DOUBLE_PATH_PENDANT = "DOUBLE_PATH_PENDANT"
-    BRACELET = "BRACELET"
-    DOUBLE_PATH_BRACELET = "DOUBLE_PATH_BRACELET"
-
-
 class Curio(Enum):
     DRAGONPIT_SWORD = "DRAGONPIT_SWORD"
     TAI_E_SWORD = "TAI_E_SWORD"
