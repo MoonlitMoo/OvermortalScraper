@@ -12,7 +12,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from db.init import seed_cultivation_levels, seed_abilities, seed_rarities, seed_pet
+from db.init import seed_cultivation_levels, seed_abilities, seed_rarities, seed_pet, seed_relics
 from log import logger
 from models.base import Base
 from scrapers.character_scraper import CharacterScraper
@@ -59,6 +59,7 @@ def db_session():
     seed_rarities(session)
     seed_abilities(session)
     seed_pet(session)
+    seed_relics(session)
 
     try:
         yield session
@@ -222,6 +223,14 @@ def test_scrape_pets(scraper, caplog):
     """
     caplog.set_level(logging.DEBUG, logger=logger.name)
     res = scraper.scrape_pets()
+    print("\n" + caplog.text)
+    assert res
+
+
+def test_scrape_relics(scraper, caplog):
+    """ Checks to see if we can get the relic names. """
+    caplog.set_level(logging.DEBUG, logger=logger.name)
+    res = scraper.scrape_relics()
     print("\n" + caplog.text)
     assert res
 

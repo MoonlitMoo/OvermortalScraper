@@ -108,7 +108,7 @@ class CharacterScraper:
                      f"using {valid_strings[index]} with similarity {similarities[index]:.3f}")
         return valid_strings[index], max(similarities)
 
-    def scrape_item(self, x, y, data_enum, full_match=False, check_double_path=False):
+    def scrape_item(self, x, y, valid_names, full_match=False, check_double_path=False):
         """ Scrapes an item for the name and turns it into an enumeration type.
         First opens it from the character screen.
         Generally separates out the last word as the name to check for most similar enumeration. Optionally can use full
@@ -120,8 +120,8 @@ class CharacterScraper:
             The x pixel coordinate of the item
         y : int
             The y pixel coordinate of the item
-        data_enum
-            An enum class the item should belong to
+        valid_names : list
+            A list of accepted names the item should belong to
         full_match : bool, optional
             Whether to match full name against the enum, or just the last word.
         check_double_path : bool, optional
@@ -165,17 +165,10 @@ class CharacterScraper:
 
         # Look for most similar enum value
         test_name = full_name.replace(' ', '_').upper()
-        item = None
-        for enum in data_enum:
-            if jellyfish.jaro_winkler_similarity(enum.value, test_name) > 0.9:
-                item = enum.value
-                break
-
-        if item is None:
-            # If missed, throw image into debug for later checking
-            item = "NONE"
-            logger.warning(f"Failed to parse '{full_name}' from capture '{all_text}' into a {data_enum}")
-            self.screen.capture(f"debug/unknown_item_{all_text}.png")
+        valid_names = valid_names if isinstance(valid_names, list) else [e.value for e in valid_names]
+        item, sim = self.validate_string(test_name, valid_names, "SCRAPE_ITEM", "item")
+        if sim < self.SIMILARITY_THRESHOLD:
+            self.screen.capture(f"debug/unknown_item_{all_text[0]}.png")
 
         # Return back to main screen
         self.screen.tap(500, 1800)
@@ -448,12 +441,13 @@ class CharacterScraper:
             values[f"curio_{i + 1}"] = self.scrape_item(col2, r, Curio, full_match=True)
 
         # General relics
+        relic_names = self.service.get_relic_names()
         i = 0
         for c in [col1, col2]:
             for r in [880, 1000, 1130]:
                 i += 1
                 logger.debug(f"Getting relic_{i}")
-                values[f"relic_{i}"] = self.scrape_item(c, r, Relic)
+                values[f"relic_{i}"] = self.scrape_item(c, r, relic_names)
         logger.info("[SCRAPE_RELICS] Finished scraping relics")
         return values
 

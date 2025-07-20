@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from models import CultivationStage, Ability, Pet
+from models import CultivationStage, Ability, Pet, Relic
 
 
 class CharacterScraperService:
@@ -14,3 +14,6 @@ class CharacterScraperService:
 
     def get_pet_names(self):
         return [a.name for a in self.db.query(Pet).all()]
+
+    def get_relic_names(self):
+        return [a.name for a in self.db.query(Relic).all()]
