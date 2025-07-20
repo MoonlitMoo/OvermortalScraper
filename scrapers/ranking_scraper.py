@@ -1,5 +1,8 @@
+import time
+
 from log import logger
 from scrapers.character_scraper import CharacterScraper
+from scrapers.screenshot_processor import parse_text_number
 from service.char_scraper_service import CharacterScraperService
 from service.ranking_scraper_service import RankingScraperService
 
@@ -12,16 +15,49 @@ class RankingScraper:
         self.taoist_scraper = CharacterScraper(CharacterScraperService(session))
         self.screen = self.taoist_scraper.screen
         self.processor = self.taoist_scraper.processor
+
+        # Setup screen notification detection
+        self.screen.green_select = (300, 900, 700, 900)
         self.current_taoist = 0
         self.my_ranking = None
-
 
     def duel_taoist(self):
         # Hit the duel button
         # Check win/loss
         pass
 
-    def scrape_taoist(self):
+    def scrape_taoist_card(self, row_x, row_y):
+        """ Gets taoist name and BR total from the row card. """
+        if self.current_taoist <= 3:
+            # Can't do it normally, so enter character and use char scraper.
+            self.screen.tap(row_x, row_y)
+            time.sleep(1.5)
+            name = self.taoist_scraper.scrape_name()['name']
+            time.sleep(.5)
+            if not self.screen.tap_button("character_screen/compare_button"):
+                logger.warning("[SCRAPE_TAOIST_CARD] Failed to click compare br button to get total BR")
+                br_val = 0
+            else:
+                time.sleep(.5)
+                br_val = self.taoist_scraper.scrape_total_br()["total_br"]
+            self.screen.back()
+            time.sleep(.2)
+            self.screen.back()
+            time.sleep(.2)
+        else:
+            # Otherwise we define boxes based on row_y and OCR the values.
+            name_box = (300, 750, row_y-50, row_y)
+            br_box = (830, 1000, row_y-25, row_y+25)
+            self.screen.filter_notifications = True
+            self.screen.update()
+            name_text = self.processor.extract_text_from_area(self.screen.CURRENT_SCREEN, name_box, use_name_reader=True)
+            br_text = self.processor.extract_text_from_area(self.screen.CURRENT_SCREEN, br_box)
+            self.screen.filter_notifications = False
+            name = name_text
+            br_val = parse_text_number(br_text)
+        return name, br_val
+
+    def scrape_taoist(self, row_x, row_y):
         # Scrape the taoist data
         # Determine if update
         # Determine if duel
@@ -42,6 +78,9 @@ class RankingScraper:
 
         ranks = []
         y_vals = []
+        self.screen.filter_notifications = True
+        self.screen.update()
+        self.screen.filter_notifications = False
         # Get all the ranking numbers
         for (_, y), _ in br_positions:
             box = (55, 140, y, y + 60)  # Box x + size is constant, we just need the right y values from br icons.
@@ -69,7 +108,7 @@ class RankingScraper:
             case 0:  # Get number 1 taoist
                 return 550, 300
             case 1:  # Get number 2 taoist
-                return 300, 300
+                return 200, 300
             case 2:  # Get number 3 taoist
                 return 900, 300
             case 100:  # Last taoist
@@ -82,7 +121,7 @@ class RankingScraper:
         ranks = self.get_visible_ranks()
         # Try scroll if not found
         if next_rank not in ranks:
-            self.screen.swipe(5, 1200, 5, 800, 200)  # 400 pixel ~3 rows
+            self.screen.swipe(5, 1200, 5, 1000, 200)  # 200 pixel ~1.5 rows
             self.screen.swipe(5, 1200, 500, 1200, 100)  # Slide horizontal to stop any further scrolling
             ranks = self.get_visible_ranks()
             if next_rank not in ranks:
