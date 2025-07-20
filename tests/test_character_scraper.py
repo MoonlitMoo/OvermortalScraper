@@ -6,10 +6,7 @@ import pytest
 
 from log import logger
 from scrapers.character_scraper import CharacterScraper
-from tests.utils import save_log, db_session, run_function_precision, print_error_report
-
-
-# Create a test engine (use SQLite in-memory DB)
+from tests.utils import save_log, db_session, run_function_precision, print_error_report, fix_dirs
 
 
 @pytest.fixture
