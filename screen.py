@@ -211,7 +211,8 @@ class Screen:
         template = cv2.cvtColor(self._load_template_image(template_path), cv2.COLOR_BGR2GRAY)
         return locate_image(screen, template, threshold)
 
-    def find_all_images(self, template_path: str, threshold: float = THRESHOLD, max_results: int = 10):
+    def find_all_images(self, template_path: str, threshold: float = THRESHOLD, max_results: int = 10,
+                        debug: bool = False):
         """
         Find all locations where the template matches above a given threshold.
 
@@ -223,7 +224,8 @@ class Screen:
             Matching threshold (default is THRESHOLD).
         max_results : int, optional
             Maximum number of matches to return (default is 10).
-
+        debug : bool, default=false
+            Whether to show debug image
         Returns
         -------
         List[Tuple[Tuple[int, int], float]]
@@ -243,7 +245,7 @@ class Screen:
             match_val = res[y, x]
             matches.append(((x, y), match_val))
 
-        # Sort matches by match value, descending (optional)
+        # Sort matches by match value, descending
         matches = sorted(matches, key=lambda x: -x[1])
 
         # Remove very close duplicates
@@ -259,6 +261,18 @@ class Screen:
             if len(final_matches) >= max_results:
                 break
 
+        if debug:
+            y_size, x_size = template.shape
+            screen = self.colour()
+            # Draw final matches in green
+            for pos, score in final_matches:
+                x, y = pos
+                top_left = (x, y)
+                bottom_right = (x + x_size, y + y_size)
+                cv2.rectangle(screen, pt1=top_left, pt2=bottom_right, color=(0, 255, 0), thickness=2)
+            height, width = screen.shape[:2]
+            cv2.imshow("Debug find_all_images", cv2.resize(screen, (width // 2, height // 2)))
+            cv2.waitKey(0)
         return final_matches
 
     def find_area(self, template_path: str, threshold: float = THRESHOLD) -> (int, int):
