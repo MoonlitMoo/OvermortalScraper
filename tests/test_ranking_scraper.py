@@ -13,7 +13,7 @@ def scraper(db_session):
 
 
 @pytest.mark.parametrize("current_taoist, expected",
-                         [[0, (550, 300)], [1, (300, 300)], [2, (900, 300)], [100, None]])
+                         [[0, (550, 300)], [1, (200, 300)], [2, (900, 300)], [100, None]])
 def test_get_next_taoist_special_case(scraper, current_taoist, expected):
     scraper.current_taoist = current_taoist
     pos = scraper.get_next_taoist()
@@ -39,3 +39,41 @@ def test_get_next_taoist_on_board(scraper):
     x3, y3 = scraper.get_next_taoist()
     assert x3, "X val for scroll rank not found"
     assert y3, "Y val for scroll rank not found"
+
+
+def test_scrape_row_taoist_card(scraper):
+    """ Make sure we can get the taoist info from the row card. """
+    ranks = scraper.get_visible_ranks()
+    scraper.current_taoist = min(ranks.keys()) - 1
+    x, y = scraper.get_next_taoist()
+
+    name, br = scraper.scrape_taoist_card(x, y)
+    print(f"Found Name: {name}, BR {br}")
+    assert name
+    assert br
+
+
+@pytest.mark.parametrize("rank", [1, 2, 3])
+def test_scrape_top_taoist_card(scraper, rank):
+    """ Make sure we can get taoist info for the top three taoists with special conds. """
+    scraper.current_taoist = rank - 1
+    x, y = scraper.get_next_taoist()
+
+    name, br = scraper.scrape_taoist_card(x, y)
+    print(f"Found Name: {name}, BR {br}")
+    assert name
+    assert br
+
+
+def test_get_all_taoists(scraper):
+    total = 0
+    print()
+    while scraper.current_taoist < 100:
+        pos = scraper.get_next_taoist()
+        scraper.current_taoist += 1
+        if pos is None:
+            continue
+        n, b = scraper.scrape_taoist_card(*pos)
+        total += 1
+        print(f"Rank {scraper.current_taoist}: '{n}', {b:.3e} BR")
+    assert total == 100, "Didn't find all taoists"
