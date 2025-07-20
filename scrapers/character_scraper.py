@@ -21,6 +21,7 @@ class CharacterScraper:
         self.service = service
         self.processor = ScreenshotProcesser()
         self.own_character = own_character
+        self.SIMILARITY_THRESHOLD = 0.85
 
     def get_start_loc(self, screenshot_path, template_path, x_offset):
         """ Gets location of button given the search condition.
@@ -97,15 +98,15 @@ class CharacterScraper:
         str
         """
         if string in valid_strings:
-            return string
+            return string, 1
 
         similarities = [jellyfish.jaro_winkler_similarity(a, string) for a in valid_strings]
         index = similarities.index(max(similarities))
-        if max(similarities) < 0.5:
+        if max(similarities) < self.SIMILARITY_THRESHOLD:
             logger.warning(f"[{logger_func}] Unknown {logger_str} {string}")
         logger.debug(f"[{logger_func}] Unknown {logger_str} {string}, "
                      f"using {valid_strings[index]} with similarity {similarities[index]:.3f}")
-        return valid_strings[index]
+        return valid_strings[index], max(similarities)
 
     def scrape_item(self, x, y, data_enum, full_match=False, check_double_path=False):
         """ Scrapes an item for the name and turns it into an enumeration type.
@@ -235,7 +236,7 @@ class CharacterScraper:
         for x, i in zip(cols, ("front", "left", "right")):
             # Send to upper to match db
             val = self.processor.extract_text_from_area(inverted_img, (x, x + width, 1080, 1110)).upper()
-            val = self.validate_string(val, valid_pets, "SCRAPE_PET", "pet")
+            val, _ = self.validate_string(val, valid_pets, "SCRAPE_PET", "pet")
             # Calculate the closest colour to get rarity
             colour = img[1190, x + int(width/2)][::-1]  # Reverse since BGR by default
             colour_distance = [
@@ -409,7 +410,7 @@ class CharacterScraper:
                 # Tends to work best with thresholding, sending to lower case to match db
                 val = ' '.join(self.processor.extract_text_from_area(img, (x, x + x_len, y, y + y_len),
                                                                      all_text=True, thresholding=True)).lower()
-                val = self.validate_string(val, valid_abilities, "SCRAPE_ABILITIES", "ability")
+                val, _ = self.validate_string(val, valid_abilities, "SCRAPE_ABILITIES", "ability")
                 results[f"ability_{i}"] = val
                 i += 1
         # Hit back button
