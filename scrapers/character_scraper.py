@@ -236,7 +236,7 @@ class CharacterScraper:
                 for label, ref_rgb in reference_colours
             ]
             rarity = min(colour_distance, key=lambda x: x[1])[0].upper()
-            results[f"pet_{i}_name"] = val
+            results[f"pet_{i}_id"] = self.service.get_pet_id(val)
             results[f"pet_{i}_rarity"] = rarity
             logger.debug(f"[SCRAPE_PETS] Found {val} of rarity {rarity}")
 
@@ -314,7 +314,7 @@ class CharacterScraper:
 
                 if label in label_to_type:
                     name = label_to_type[label]
-                    result[f"{name}_stage"] = level.name
+                    result[f"{name}_stage_id"] = self.service.get_cultivate_stage_id(level.name)
                     result[f"{name}_minor_stage"] = stage.upper() if stage else None
         self.screen.tap(100, 1800)
 
@@ -353,6 +353,7 @@ class CharacterScraper:
             stage = int(stage_raw)
         else:
             raise ValueError(f"Unrecognized stage value: {stage_raw}")
+        alignment = alignment if alignment.upper() != "DIVINITY" else "DIVINE"
         result.update({
             "alignment": alignment.upper(),
             "daemonfae_stage": stage,
@@ -403,7 +404,7 @@ class CharacterScraper:
                 val = ' '.join(self.processor.extract_text_from_area(img, (x, x + x_len, y, y + y_len),
                                                                      all_text=True, thresholding=True)).lower()
                 val, _ = self.validate_string(val, valid_abilities, "SCRAPE_ABILITIES", "ability")
-                results[f"ability_{i}"] = val
+                results[f"ability_{i}_id"] = self.service.get_ability_id(val)
                 i += 1
         # Hit back button
         self.screen.tap(100, 1800)
@@ -426,20 +427,25 @@ class CharacterScraper:
 
         # Weapon
         logger.debug(f"Getting weapon")
-        values["weapon"] = self.scrape_item(col1, row1, self.service.get_relic_names("WEAPON"), check_double_path=True)
+        values["weapon_id"] = self.service.get_relic_id(
+            self.scrape_item(col1, row1, self.service.get_relic_names("WEAPON"), check_double_path=True), "WEAPON"
+        )
         # Armour
         logger.debug(f"Getting armour")
-        values["armour"] = self.scrape_item(col1, row2, self.service.get_relic_names("ARMOR"), check_double_path=True)
+        values["armour_id"] = self.service.get_relic_id(
+            self.scrape_item(col1, row2, self.service.get_relic_names("ARMOR"), check_double_path=True), "ARMOR"
+        )
         # Accessory
         logger.debug(f"Getting accessory")
-        values["accessory"] = self.scrape_item(
-            col1, row3, self.service.get_relic_names("ACCESSORY"), check_double_path=True)
+        values["accessory_id"] = self.service.get_relic_id(
+            self.scrape_item(col1, row3, self.service.get_relic_names("ACCESSORY"), check_double_path=True), "ACCESSORY"
+        )
 
         # Curio
         curios = self.service.get_curio_names()
         for i, r in enumerate([row1, row2, row3]):
             logger.debug(f"Getting curio_{i + 1}")
-            values[f"curio_{i + 1}"] = self.scrape_item(col2, r, curios, full_match=True)
+            values[f"curio_{i + 1}_id"] = self.service.get_curio_id(self.scrape_item(col2, r, curios, full_match=True))
 
         # General relics
         general_relics = self.service.get_relic_names("GENERAL")
@@ -448,7 +454,7 @@ class CharacterScraper:
             for r in [880, 1000, 1130]:
                 i += 1
                 logger.debug(f"Getting relic_{i}")
-                values[f"relic_{i}"] = self.scrape_item(c, r, general_relics)
+                values[f"relic_{i}_id"] = self.service.get_relic_id(self.scrape_item(c, r, general_relics), "GENERAL")
         logger.info("[SCRAPE_RELICS] Finished scraping relics")
         return values
 

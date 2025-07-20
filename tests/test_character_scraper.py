@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 
@@ -17,6 +18,12 @@ def scraper(db_session):
     service = CharacterScraperService(db=db_session)
     s = CharacterScraper(service, own_character=False)
     return s
+
+
+@save_log
+def test_create_scraped_json(scraper, caplog):
+    with open("temp.json", "w") as file:
+        file.write(json.dumps(scraper.scrape(), indent=2))
 
 
 @save_log
