@@ -1,10 +1,11 @@
 import csv
 from pathlib import Path
 
-from models import Ability, RarityLevel, Pet
+from models import Ability, RarityLevel, Pet, Relic
 from models.base import Base
 from db.session import engine, SessionLocal
 from models.cultivation import CultivationStage, CultivationType
+from models.relic import Divinity
 
 
 def init_db():
@@ -15,6 +16,7 @@ def init_db():
     seed_rarities(session)
     seed_abilities(session)
     seed_pet(session)
+    seed_relics(session)
 
     session.close()
 
@@ -83,4 +85,37 @@ def seed_pet(session):
     for name, base_form in type_names:
         if not session.query(Pet).filter_by(name=name).first():
             session.add(Pet(name=name, base_form=base_form))
+    session.commit()
+
+
+def seed_relics(session, csv_path: str = 'resources/db_seed/relics.csv'):
+    path = Path(csv_path)
+    if not path.exists():
+        print(f"Seed file not found: {csv_path}")
+        return
+
+    with path.open("r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            name = row.get("name", "").strip().upper()
+            c_type_name = row.get("type", "").strip().upper()
+            divinity_str = row.get("divinity", "").strip().upper()
+
+            if not (name and c_type_name and divinity_str):
+                continue
+
+            c_type_obj = session.query(CultivationType).filter_by(name=c_type_name).first()
+            if not c_type_obj:
+                print(f"Skipping relic '{name}' — unknown cultivation type '{c_type_name}'")
+                continue
+
+            try:
+                divinity = Divinity[divinity_str if divinity_str != "NONE" else "None_"]
+            except KeyError:
+                print(f"Invalid divinity '{divinity_str}' in relic '{name}'")
+                continue
+
+            exists = session.query(Relic).filter_by(name=name).first()
+            if not exists:
+                session.add(Relic(name=name, cultivation_type=c_type_obj, divinity=divinity))
     session.commit()

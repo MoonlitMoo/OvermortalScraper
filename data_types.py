@@ -1,43 +1,6 @@
 from enum import Enum
 
 
-class Relic(Enum):
-    # Physical
-    BELL = "BELL"
-    CHAIN = "CHAIN"
-    DRUM = "DRUM"
-    PAGODA = "PAGODA"
-    SEAL = "SEAL"
-    # Magical
-    AMULET = "AMULET"
-    BANNER = "BANNER"
-    CAULDRON = "CAULDRON"
-    GOURD = "GOURD"
-    PEARL = "PEARL"
-    MIRROR = "MIRROR"
-    TRIGRAM = "TRIGRAM"
-    # Swordia
-    GREATSWORD = "GREATSWORD"
-    LONGSWORD = "LONGSWORD"
-    # Ghostia
-    ARMGUARD = "ARMGUARD"
-    FLAG = "FLAG"
-    MASK = "MASK"
-    ROPE = "ROPE"
-    SOUL_BANNER = "SOUL_BANNER"
-    # PHYSICAL DIVINITY
-    SCROLL = "SCROLL"
-    # MAGICKA DIVINITY
-    ROBE = "ROBE"
-    UMBRELLA = "UMBRELLA"
-    FLASK = "FLASK"
-    ARMOR = "ARMOR"
-    BLADE = "BLADE"
-    BELLS = "BELLS"
-    # SWORDIA DIVINITY
-    CYANCREST = "CYANCREST"
-
-
 class Weapon(Enum):
     FAN = "FAN"
     DOUBLE_PATH_FAN = "DOUBLE_PATH_FAN"
