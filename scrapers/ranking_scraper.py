@@ -110,7 +110,18 @@ class RankingScraper:
                 ranks.append(int(text))
                 y_vals.append(y + 30)  # Set the y value to be centred on the row with +30 offset
             except ValueError:
-                logger.warning(f"[get_next_taoist] Failed to get rank from text {text}.")
+                # Try to recover using last rank
+                if ranks:
+                    ranks.append(ranks[-1] + 1)
+                    y_vals.append(y + 30)
+                    logger.debug(f"[get_next_taoist] Failed to get rank, assumed to be {ranks[-1]} due to last rank")
+                else:
+                    logger.warning(f"[get_next_taoist] Failed to get rank from text '{text}'.")
+
+        if not ranks:
+            logger.warning(f"[get_next_taoist] Failed to get any ranks.")
+            self.screen.capture("debug/leaderboard_read_fail.png", update=False)
+            return {}
 
         # Last one is always me, so we can trim it off
         if self.my_ranking is None:
@@ -146,7 +157,8 @@ class RankingScraper:
             self.screen.swipe(5, 1200, 500, 1200, 100)  # Slide horizontal to stop any further scrolling
             ranks = self.get_visible_ranks()
             if next_rank not in ranks:
-                logger.warning("[get_next_taoist] Failed to get next taoist after scroll")
+                logger.warning(f"[get_next_taoist] Failed to get next taoist '{next_rank}' after scroll")
+                self.screen.capture(f"debug/rank_{next_rank}_missing.png", update=False)
                 return None
         return 300, ranks[next_rank]
 
