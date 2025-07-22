@@ -58,7 +58,7 @@ class Screen:
         """ Returns current screen image in grayscale. """
         return cv2.cvtColor(cv2.imread(self.CURRENT_SCREEN), cv2.COLOR_BGR2GRAY)
 
-    def capture(self, name: str = None):
+    def capture(self, name: str = None, update: bool = True):
         """
         Capture the current screen in colour and save it to a file.
 
@@ -66,8 +66,11 @@ class Screen:
         ----------
         name : str, optional
             Filename to save the screenshot. If None, uses a timestamped filename.
+        update : bool, optional
+            Whether to update before saving.
         """
-        self.update()  # Make sure the latest screen is fetched
+        if update:
+            self.update()  # Make sure the latest screen is fetched
         img = self.colour()  # Get the colour version of the screen
 
         if name is None:
