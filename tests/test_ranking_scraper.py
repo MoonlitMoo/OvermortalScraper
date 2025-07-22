@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from .utils import db_session, fix_dirs
+from .utils import db_session, fix_dirs, save_log
 
 from scrapers.ranking_scraper import RankingScraper
 
@@ -88,5 +88,15 @@ def test_add_taoist(scraper):
     scraper.service.add_taoist_from_scrape(data)
 
 
-def test_scrape_taoist(scraper):
-    pass
+@save_log
+def test_scrape_taoist(scraper, caplog):
+    pos = scraper.get_next_taoist()
+    scraper.scrape_taoist(*pos)
+
+
+@save_log
+def test_run(scraper, caplog, monkeypatch):
+    """ Test we can go through all the taoists (without scraping) """
+    monkeypatch.setattr(scraper.taoist_scraper, "scrape", lambda: {})
+    monkeypatch.setattr(scraper.service, "add_taoist_from_scrape", lambda x: 0)
+    scraper.run()
