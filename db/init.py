@@ -18,8 +18,7 @@ def init_db():
     seed_pet(session)
     seed_relics(session)
     seed_curios(session)
-
-    session.close()
+    return session
 
 
 def seed_cultivation_levels(session):
