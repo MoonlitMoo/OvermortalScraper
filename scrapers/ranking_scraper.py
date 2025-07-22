@@ -58,6 +58,18 @@ class RankingScraper:
         return name, br_val
 
     def scrape_taoist(self, row_x, row_y):
+        """ Checks current taoist and adds to database if necessary.
+
+        Parameters
+        row_x : int
+            x pixel of taoist
+        row_y : int
+            y pixel of taoist
+
+        Returns
+        bool
+            If taoist was added to database
+        """
         name, br = self.scrape_taoist_card(row_x, row_y)
         # Get all records for taoists by this name, assume no duplicate names.
         records = self.service.get_taoist_records(name)
@@ -67,12 +79,11 @@ class RankingScraper:
             self.screen.tap(row_x, row_y)
             time.sleep(.5)
             taoist_data = self.taoist_scraper.scrape()
-
-        # Scrape the taoist data
-        # Determine if update
-        # Determine if duel
-        # Store results
-        pass
+            self.service.add_taoist_from_scrape(taoist_data)
+        self.screen.back()
+        logger.debug(f"[RankingScraper SCRAPE_TAOIST] Scraped rank {self.current_taoist}.")
+        # TODO: Duel
+        return not skip
 
     def get_visible_ranks(self):
         """ Gets dictionary of rank to y value from the current screen.
@@ -140,7 +151,16 @@ class RankingScraper:
         return 300, ranks[next_rank]
 
     def run(self):
-        # Iterate through taoists
-        # Scrape taoist
-        # End + stats
-        pass
+        total_read = 0
+        total_added = 0
+
+        while self.current_taoist < 100:
+            pos = self.get_next_taoist()
+            self.current_taoist += 1
+            added = self.scrape_taoist(*pos)
+            time.sleep(.25)
+            if added:
+                total_added += 1
+            total_read += 1
+
+        logger.info(f"[RankingScraper RUN] Added {total_added}/{total_read} taoists from the leaderboard.")
