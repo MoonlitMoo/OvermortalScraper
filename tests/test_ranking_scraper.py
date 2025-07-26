@@ -24,7 +24,7 @@ def scraper(db_session):
                          [[0, (550, 300)], [1, (200, 300)], [2, (900, 300)], [100, None]])
 def test_get_next_taoist_special_case(scraper, current_taoist, expected):
     scraper.current_taoist = current_taoist
-    pos = scraper.get_next_taoist()
+    pos = scraper.get_taoist_pixels()
     assert pos == expected, f"Incorrect pos {pos} for current_taoist {current_taoist}"
 
 
@@ -34,17 +34,17 @@ def test_get_next_taoist_on_board(scraper):
     first_rank = min(ranks.keys())
     # Look for first rank
     scraper.current_taoist = first_rank - 1
-    x1, y1 = scraper.get_next_taoist()
+    x1, y1 = scraper.get_taoist_pixels()
     scraper.current_taoist = first_rank
     # Look for second rank
-    x2, y2 = scraper.get_next_taoist()
+    x2, y2 = scraper.get_taoist_pixels()
     assert x1 == x2, "X val is different for numerical ranks"
     assert 120 < abs(y1 - y2) < 150, "Y val offset is too different for subsequent ranks"
 
     # See if we can scroll to next ranks
     last_rank = max(ranks.keys())
     scraper.current_taoist = last_rank
-    x3, y3 = scraper.get_next_taoist()
+    x3, y3 = scraper.get_taoist_pixels()
     assert x3, "X val for scroll rank not found"
     assert y3, "Y val for scroll rank not found"
 
@@ -53,7 +53,7 @@ def test_scrape_row_taoist_card(scraper):
     """ Make sure we can get the taoist info from the row card. """
     ranks = scraper.get_visible_ranks()
     scraper.current_taoist = min(ranks.keys()) - 1
-    x, y = scraper.get_next_taoist()
+    x, y = scraper.get_taoist_pixels()
 
     name, br = scraper.scrape_taoist_card(x, y)
     print(f"Found Name: {name}, BR {br}")
@@ -65,7 +65,7 @@ def test_scrape_row_taoist_card(scraper):
 def test_scrape_top_taoist_card(scraper, rank):
     """ Make sure we can get taoist info for the top three taoists with special conds. """
     scraper.current_taoist = rank - 1
-    x, y = scraper.get_next_taoist()
+    x, y = scraper.get_taoist_pixels()
 
     name, br = scraper.scrape_taoist_card(x, y)
     print(f"Found Name: {name}, BR {br}")
@@ -91,7 +91,7 @@ def test_add_taoist(scraper):
 
 @save_log
 def test_scrape_taoist(scraper, caplog):
-    pos = scraper.get_next_taoist()
+    pos = scraper.get_taoist_pixels()
     scraper.scrape_taoist(*pos)
 
 
