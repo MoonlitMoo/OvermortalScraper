@@ -172,7 +172,7 @@ class CharacterScraper:
 
         # Return back to main screen
         self.screen.tap(500, 1800)
-        self.screen.wait_for_state("character_screen/compare_br")
+        self.screen.wait_for_state("../buttons/character_screen/pet")
         return item
 
     def scrape_name(self):
