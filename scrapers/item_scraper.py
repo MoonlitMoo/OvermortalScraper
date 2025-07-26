@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 from log import logger
-from scrapers.screenshot_processor import ScreenshotProcesser
+from scrapers.screenshot_processor import ScreenshotProcessor
 from screen import Screen
 
 
@@ -191,7 +191,7 @@ class ItemScraper:
         cv2.destroyAllWindows()
 
 
-ScreenshotProcesser().process_weapon("screencaps/weapon_item2")
+ScreenshotProcessor().process_weapon("screencaps/weapon_item2")
 
 # ItemScraper().iterate_list("resources/item_scraper/item_edge.png", "relic", 12)
 # ItemScraper().save_item("relic", 19)

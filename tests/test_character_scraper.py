@@ -6,7 +6,7 @@ import pytest
 
 from log import logger
 from screen import Screen
-from scrapers.screenshot_processor import ScreenshotProcesser
+from scrapers.screenshot_processor import ScreenshotProcessor
 from scrapers.character_scraper import CharacterScraper
 from tests.utils import save_log, db_session, run_function_precision, print_error_report, fix_dirs
 
@@ -16,7 +16,7 @@ def scraper(db_session):
     """ Create the scraper to use with correct path to current screen. """
     from service.char_scraper_service import CharacterScraperService
     screen = Screen(logger)
-    processor = ScreenshotProcesser()
+    processor = ScreenshotProcessor()
     service = CharacterScraperService(db=db_session)
     s = CharacterScraper(screen=screen, service=service, processor=processor, logger=logger, own_character=False)
     return s

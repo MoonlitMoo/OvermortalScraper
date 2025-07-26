@@ -45,7 +45,7 @@ def parse_text_number(text: str) -> float:
     return num
 
 
-class ScreenshotProcesser:
+class ScreenshotProcessor:
 
     def __init__(self):
         self.reader = easyocr.Reader(['en'])

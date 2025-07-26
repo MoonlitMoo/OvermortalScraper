@@ -1,7 +1,7 @@
 import time
 
 from scrapers.character_scraper import CharacterScraper
-from scrapers.screenshot_processor import parse_text_number, ScreenshotProcesser
+from scrapers.screenshot_processor import parse_text_number, ScreenshotProcessor
 from screen import Screen
 from service.char_scraper_service import CharacterScraperService
 from service.ranking_scraper_service import RankingScraperService
@@ -21,7 +21,7 @@ class RankingScraper:
         The instance to interact with emulator with.
     service : CharacterScraperService
         Interact with database for this scraper specific needs.
-    processor : ScreenshotProcesser
+    processor : ScreenshotProcessor
         OCR processor for screenshots.
     logger : Logger
         The log file to output to.
@@ -33,7 +33,7 @@ class RankingScraper:
         Ranking of own taoist
     """
 
-    def __init__(self, screen: Screen, session, processor: ScreenshotProcesser, logger):
+    def __init__(self, screen: Screen, session, processor: ScreenshotProcessor, logger):
         self.logger = logger
         self.screen = screen
         self.service = RankingScraperService(session)

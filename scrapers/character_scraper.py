@@ -8,7 +8,7 @@ import numpy as np
 from models.cultivation import CultivationMinorStage
 from screen import Screen
 from service.char_scraper_service import CharacterScraperService
-from scrapers.screenshot_processor import ScreenshotProcesser, parse_text_number
+from scrapers.screenshot_processor import ScreenshotProcessor, parse_text_number
 from image_functions import locate_area
 
 
@@ -21,17 +21,17 @@ class CharacterScraper:
         The instance to interact with emulator with.
     service : CharacterScraperService
         Interact with database for this scraper specific needs.
-    processor : ScreenshotProcesser
+    processor : ScreenshotProcessor
         OCR processor for screenshots.
-    self.logger : self.logger
-        The self.logger to output to
+    self.logger : logger
+        The logger to output to
     own_character : bool
         Toggle for scraping own stats from Compare BR
     SIMILARITY_THRESHOLD : float
        Constant to use for OCR similarity metrics between words.
     """
 
-    def __init__(self, screen: Screen, service: CharacterScraperService, processor: ScreenshotProcesser,
+    def __init__(self, screen: Screen, service: CharacterScraperService, processor: ScreenshotProcessor,
                  logger, own_character: bool = False):
         self.screen = screen
         self.service = service
