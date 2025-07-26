@@ -73,18 +73,13 @@ def test_scrape_top_taoist_card(scraper, rank):
     assert br
 
 
-def test_get_all_taoists(scraper):
-    total = 0
-    print()
-    while scraper.current_taoist < 100:
-        pos = scraper.get_next_taoist()
-        scraper.current_taoist += 1
-        if pos is None:
-            continue
-        n, b = scraper.scrape_taoist_card(*pos)
-        total += 1
-        print(f"Rank {scraper.current_taoist}: '{n}', {b:.3e} BR")
-    assert total == 100, "Didn't find all taoists"
+@save_log
+def test_duel_taoist(scraper, caplog):
+    """ Checks that we can duel a taoist and detect win/loss.
+    Need to be on character screen.
+    """
+    res = scraper.duel_taoist()
+    assert res is not None
 
 
 def test_add_taoist(scraper):

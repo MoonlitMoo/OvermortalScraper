@@ -2,7 +2,7 @@ import time
 
 from scrapers.character_scraper import CharacterScraper
 from core.screenshot_processor import parse_text_number, ScreenshotProcessor
-from core.screen import Screen
+from core.screen import Screen, StateNotReached
 from db.service.char_scraper_service import CharacterScraperService
 from db.service.ranking_scraper_service import RankingScraperService
 
@@ -47,9 +47,41 @@ class RankingScraper:
         self.my_ranking = None
 
     def duel_taoist(self):
-        # Hit the duel button
-        # Check win/loss
-        pass
+        """ Duels the current taoist, then navigates back to the leaderboard.
+
+        Returns
+        -------
+        did_win : bool
+            If the duel was won.
+        """
+        # Start screen by tapping more and duel buttons
+        self.screen.tap(200, 1225)
+        time.sleep(0.1)
+        if not self.screen.tap_button("character_screen/duel"):
+            self.logger.warning("Failed to get to start duel")
+            return None
+        time.sleep(0.1)
+        # Wait until duel is finished, with 60s timeout for long duels
+        try:
+            self.screen.wait_for_any_state(["battle_screen/victory", "battle_screen/defeat"], timeout=60)
+        except StateNotReached:
+            return None
+        did_win = True if self.screen.find("state/battle_screen/victory") is not None else False
+        self.logger.debug(f"Duel finished with {'win' if did_win else 'loss'}")
+
+        # Navigate back to leaderboard by exiting end screen, swiping towards right to find leaderboard button.
+        self.screen.tap(550, 1850)
+        time.sleep(0.1)
+        self.screen.swipe(800, 1000, 200, 1000, 200)
+        self.screen.tap(1000, 800)
+        # Click chaos rankings button, then top BR
+        self.screen.tap_button("locations/town/chaos_rankings")
+        self.screen.wait_for_state("locations/town/chaos_rankings/main_page")
+        self.screen.tap(300, 500)
+        self.screen.wait_for_state("locations/town/chaos_rankings/br_leaderboard")
+
+        self.logger.debug(f"Returned to leaderboard")
+        return did_win
 
     def scrape_taoist_card(self, row_x, row_y, my_card: bool = False):
         """ Gets taoist name and BR total from the row card.
