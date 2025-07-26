@@ -24,6 +24,8 @@ def save_log(test_func):
     def wrapper(*args, **kwargs):
         caplog = kwargs.get("caplog", None)
         caplog.set_level(logging.DEBUG, logger=logger.name)
+        formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] [%(name)s.%(funcName)s] %(message)s', datefmt='%H:%M:%S')
+        caplog.handler.setFormatter(formatter)
         try:
             test_func(*args, **kwargs)
         except Exception as e:
