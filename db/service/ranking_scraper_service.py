@@ -1,23 +1,11 @@
 from sqlalchemy.orm import Session
 
-from db.models import Taoist, Ability, Pet
+from db.models import Taoist, Ability, Pet, DuelRecord
 
 
 class RankingScraperService:
     def __init__(self, db: Session):
         self.db = db
-
-    def _resolve_pet_id(self, name: str):
-        pet = self.db.query(Pet).filter_by(name=name).first()
-        if not pet:
-            raise ValueError(f"Pet not found with name: {name}")
-        return pet.id
-
-    def _resolve_ability_id(self, name: str):
-        ability = self.db.query(Ability).filter_by(name=name).first()
-        if not ability:
-            raise ValueError(f"Ability not found: {name}")
-        return ability.id
 
     def check_for_existing_taoist(self, name: str, new_br: float):
         """ Returns the ID of the most recent Taoist within ±1% of new_br, if any.
@@ -50,7 +38,15 @@ class RankingScraperService:
         """
         Add a Taoist to the database from a dictionary of values.
 
-        Foreign key values like curio_1, ability_0, etc. must already be resolved to their corresponding IDs.
+        Parameters
+        ----------
+        data : dict
+            Correct key: value pairs for all required taoist fields
+
+        Returns
+        -------
+        Taoist
+            The object inserted into the database
         """
         taoist = Taoist(**data)
         self.db.add(taoist)
@@ -58,5 +54,23 @@ class RankingScraperService:
         self.db.refresh(taoist)
         return taoist
 
-    def add_duel_result(self, winner_id, loser_id):
-        pass
+    def add_duel_result(self, winner_id: int, loser_id: int):
+        """ Adds a duel record to the database
+
+        Parameters
+        ----------
+        winner_id : int
+            Taoist id from database of the winner
+        loser_id : int
+            Taoist id from database of the loser
+
+        Returns
+        -------
+        DuelRecord
+            The object inserted into the database
+        """
+        record = DuelRecord(winner_id=winner_id, loser_id=loser_id)
+        self.db.add(record)
+        self.db.commit()
+        self.db.refresh(record)
+        return record
