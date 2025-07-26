@@ -4,17 +4,17 @@ import time
 import numpy as np
 import pytest
 
-from log import logger
-from screen import Screen
-from scrapers.screenshot_processor import ScreenshotProcessor
+from core.log import logger
+from core.screen import Screen
+from core.screenshot_processor import ScreenshotProcessor
 from scrapers.character_scraper import CharacterScraper
-from tests.utils import save_log, db_session, run_function_precision, print_error_report, fix_dirs
+from tests.utils import save_log, db_session, run_function_precision, print_error_report
 
 
 @pytest.fixture
 def scraper(db_session):
     """ Create the scraper to use with correct path to current screen. """
-    from service.char_scraper_service import CharacterScraperService
+    from db.service.char_scraper_service import CharacterScraperService
     screen = Screen(logger)
     processor = ScreenshotProcessor()
     service = CharacterScraperService(db=db_session)

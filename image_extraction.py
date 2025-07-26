@@ -1,6 +1,6 @@
 import cv2
 
-from screen import Screen
+from core.screen import Screen
 
 screen = Screen(None)
 OUTPUT_PATH = 'extracted.png'

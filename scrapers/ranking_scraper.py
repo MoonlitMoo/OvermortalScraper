@@ -1,10 +1,10 @@
 import time
 
 from scrapers.character_scraper import CharacterScraper
-from scrapers.screenshot_processor import parse_text_number, ScreenshotProcessor
-from screen import Screen
-from service.char_scraper_service import CharacterScraperService
-from service.ranking_scraper_service import RankingScraperService
+from core.screenshot_processor import parse_text_number, ScreenshotProcessor
+from core.screen import Screen
+from db.service.char_scraper_service import CharacterScraperService
+from db.service.ranking_scraper_service import RankingScraperService
 
 
 class RankingScraper:

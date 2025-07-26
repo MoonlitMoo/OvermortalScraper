@@ -5,11 +5,11 @@ import cv2
 import jellyfish
 import numpy as np
 
+from core.screen import Screen
+from core.screenshot_processor import ScreenshotProcessor, parse_text_number
+from db.service.char_scraper_service import CharacterScraperService
 from db.models.cultivation import CultivationMinorStage
-from screen import Screen
-from service.char_scraper_service import CharacterScraperService
-from scrapers.screenshot_processor import ScreenshotProcessor, parse_text_number
-from image_functions import locate_area
+from core.image_functions import locate_area
 
 
 class CharacterScraper:

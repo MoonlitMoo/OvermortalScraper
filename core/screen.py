@@ -5,7 +5,7 @@ from typing import List
 import cv2
 import numpy as np
 
-from image_functions import locate_image, stitch_images, similar_images
+from .image_functions import locate_image, stitch_images, similar_images
 
 
 class StateNotReached(Exception):

@@ -3,10 +3,10 @@ import time
 
 import pytest
 
-from log import logger
-from scrapers.screenshot_processor import ScreenshotProcessor
-from screen import Screen
-from .utils import db_session, fix_dirs, save_log
+from core.log import logger
+from core.screenshot_processor import ScreenshotProcessor
+from core.screen import Screen
+from .utils import db_session, save_log
 
 from scrapers.ranking_scraper import RankingScraper
 

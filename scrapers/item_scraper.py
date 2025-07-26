@@ -1,11 +1,10 @@
 import re
 import time
 import cv2
-import numpy as np
 
-from log import logger
-from scrapers.screenshot_processor import ScreenshotProcessor
-from screen import Screen
+from core.log import logger
+from core.screenshot_processor import ScreenshotProcessor
+from core.screen import Screen
 
 
 def parse_and_sum(text: str) -> float:
