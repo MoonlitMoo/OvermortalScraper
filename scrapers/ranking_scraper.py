@@ -46,11 +46,12 @@ class RankingScraper:
             time.sleep(.2)
         else:
             # Otherwise we define boxes based on row_y and OCR the values.
-            name_box = (300, 750, row_y-50, row_y)
-            br_box = (830, 1000, row_y-25, row_y+25)
+            name_box = (300, 750, row_y - 50, row_y)
+            br_box = (830, 1000, row_y - 25, row_y + 25)
             self.screen.filter_notifications = True
             self.screen.update()
-            name_text = self.processor.extract_text_from_area(self.screen.CURRENT_SCREEN, name_box, use_name_reader=True)
+            name_text = self.processor.extract_text_from_area(self.screen.CURRENT_SCREEN, name_box,
+                                                              use_name_reader=True)
             br_text = self.processor.extract_text_from_area(self.screen.CURRENT_SCREEN, br_box)
             self.screen.filter_notifications = False
             name = name_text
@@ -74,7 +75,7 @@ class RankingScraper:
         # Get all records for taoists by this name, assume no duplicate names.
         records = self.service.get_taoist_records(name)
         # Then, if there are any records < 1% BR from this, we will skip as more or less the same being.
-        skip = any([abs(r[2]/br - 1) < 0.01 for r in records])
+        skip = any([abs(r[2] / br - 1) < 0.01 for r in records])
         if not skip:
             self.screen.tap(row_x, row_y)
             time.sleep(.5)
