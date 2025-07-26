@@ -568,10 +568,9 @@ class CharacterScraper:
                 # Get the relic items if looking at different character
                 full_stats.update(self.scrape_name())
                 full_stats.update(self.scrape_relics())
+                full_stats.update(self.scrape_pets())
             else:
                 logger.info("[SCRAPE] Skipped relic and name values as looking at own character")
-            # Get pets before opening compare screen
-            full_stats.update(self.scrape_pets())
             # Open compare screen by clicking the button
             time.sleep(0.25)
             if not self.screen.tap_button("character_screen/compare_button"):
