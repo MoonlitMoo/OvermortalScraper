@@ -1,11 +1,12 @@
 import json
-import logging
 import time
 
 import numpy as np
 import pytest
 
 from log import logger
+from screen import Screen
+from scrapers.screenshot_processor import ScreenshotProcesser
 from scrapers.character_scraper import CharacterScraper
 from tests.utils import save_log, db_session, run_function_precision, print_error_report, fix_dirs
 
@@ -14,9 +15,10 @@ from tests.utils import save_log, db_session, run_function_precision, print_erro
 def scraper(db_session):
     """ Create the scraper to use with correct path to current screen. """
     from service.char_scraper_service import CharacterScraperService
-
+    screen = Screen(logger)
+    processor = ScreenshotProcesser()
     service = CharacterScraperService(db=db_session)
-    s = CharacterScraper(service, own_character=False)
+    s = CharacterScraper(screen=screen, service=service, processor=processor, logger=logger, own_character=False)
     return s
 
 
@@ -62,21 +64,19 @@ def test_scrape_abilities(scraper, caplog):
     assert res
 
 
+@save_log
 def test_scrape_pets(scraper, caplog):
     """ Checks we can get the ability names.
     Expected to run from Taoist Compare BR screen.
     """
-    caplog.set_level(logging.DEBUG, logger=logger.name)
     res = scraper.scrape_pets()
-    print("\n" + caplog.text)
     assert res
 
 
+@save_log
 def test_scrape_relics(scraper, caplog):
     """ Checks to see if we can get the relic names. """
-    caplog.set_level(logging.DEBUG, logger=logger.name)
     res = scraper.scrape_relics()
-    print("\n" + caplog.text)
     assert res
 
 

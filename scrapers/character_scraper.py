@@ -5,7 +5,6 @@ import cv2
 import jellyfish
 import numpy as np
 
-from log import logger
 from models.cultivation import CultivationMinorStage
 from screen import Screen
 from service.char_scraper_service import CharacterScraperService
@@ -14,12 +13,30 @@ from image_functions import locate_area
 
 
 class CharacterScraper:
-    """ From the character select screen, retrieves all stats of a character found within the "Compare BR" tab. """
+    """ From the character select screen, retrieves all stats of a character found within the "Compare BR" tab.
 
-    def __init__(self, service: CharacterScraperService, own_character=False):
-        self.screen = Screen(logger)
+    Attributes
+    ----------
+    screen : Screen
+        The instance to interact with emulator with.
+    service : CharacterScraperService
+        Interact with database for this scraper specific needs.
+    processor : ScreenshotProcesser
+        OCR processor for screenshots.
+    self.logger : self.logger
+        The self.logger to output to
+    own_character : bool
+        Toggle for scraping own stats from Compare BR
+    SIMILARITY_THRESHOLD : float
+       Constant to use for OCR similarity metrics between words.
+    """
+
+    def __init__(self, screen: Screen, service: CharacterScraperService, processor: ScreenshotProcesser,
+                 logger, own_character: bool = False):
+        self.screen = screen
         self.service = service
-        self.processor = ScreenshotProcesser()
+        self.processor = processor
+        self.logger = logger
         self.own_character = own_character
         self.SIMILARITY_THRESHOLD = 0.85
 
@@ -41,7 +58,7 @@ class CharacterScraper:
 
         text_area = locate_area(cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY), template_img, 0.9)
         if text_area is None:
-            logger.debug(f"Failed to get image {template_path}")
+            self.logger.debug(f"Failed to get image '{template_path}'")
             return None
 
         box_y_offset = -40
@@ -72,39 +89,39 @@ class CharacterScraper:
                                                       thresholding=False,
                                                       faint_text=not self.own_character)
         try:
-            logger.debug(f"[get_value] Retrieved text '{value}' as '{parse_text_number(value)}")
+            self.logger.advdebug(f"Retrieved text '{value}' as '{parse_text_number(value)}")
             return parse_text_number(value)
         except ValueError:
-            logger.debug(f"[get_value] Retrieved text '{value}' as '0'")
+            self.logger.advdebug(f"Retrieved text '{value}' as '0'")
             return 0
 
-    def validate_string(self, string, valid_strings, logger_func, logger_str):
+    def validate_string(self, value, valid_strings, func_desc, str_desc):
         """ Returns a valid string from the given list. Uses closest match if not exact.
         Gives warning if closest match is not close.
 
         Parameters
         ----------
-        string : str
+        value : str
             String to validate
         valid_strings : list of str
             The valid strings to match to
-        logger_func : str
+        func_desc : str
             A string describing the function calling validation
-        logger_str : str
-            A string describing what the string represents.
+        str_desc : str
+            A string describing what the value represents.
 
         Returns
         -------
         str
         """
-        if string in valid_strings:
-            return string, 1
+        if value in valid_strings:
+            return value, 1
 
-        similarities = [jellyfish.jaro_winkler_similarity(a, string) for a in valid_strings]
+        similarities = [jellyfish.jaro_winkler_similarity(a, value) for a in valid_strings]
         index = similarities.index(max(similarities))
         if max(similarities) < self.SIMILARITY_THRESHOLD:
-            logger.warning(f"[{logger_func}] Unknown {logger_str} {string}")
-        logger.debug(f"[{logger_func}] Unknown {logger_str} {string}, "
+            self.logger.warning(f"Unknown '{str_desc}' for '{func_desc}' of '{value}'")
+        self.logger.debug(f"Unknown '{str_desc}' for '{func_desc}' of '{value}'"
                      f"using {valid_strings[index]} with similarity {similarities[index]:.3f}")
         return valid_strings[index], max(similarities)
 
@@ -135,7 +152,7 @@ class CharacterScraper:
 
         Notes
         -----
-        If no matching enum is found, a debug image of the item is captured and logger is given a warning.
+        If no matching enum is found, a debug image of the item is captured and self.logger is given a warning.
         """
         # Select item
         self.screen.tap(x, y)
@@ -189,7 +206,7 @@ class CharacterScraper:
         self.screen.tap(200, 1225)
         time.sleep(0.1)
         if not self.screen.tap_button("character_screen/report"):
-            logger.warning("[SCRAPE_NAME] Failed to get to report screen")
+            self.logger.warning("Failed to get to report screen")
             return {}
         time.sleep(0.1)
         # Capture text of name
@@ -198,12 +215,11 @@ class CharacterScraper:
             img, (100, 950, 550, 650), all_text=True, use_name_reader=True)
         # Sanitise the name
         text = ' '.join(all_text).split("player:")[-1].lower().strip().encode(errors='replace').decode()
-        logger.debug(f"Scraped name '{text}'")
         # Go back to home screen
         self.screen.tap(500, 1500)
         time.sleep(0.1)
         self.screen.tap(500, 1500)
-        logger.info("[SCRAPE_NAME] Scraped name")
+        self.logger.info(f"Scraped name '{text}'")
         return {"name": text}
 
     def scrape_pets(self):
@@ -241,9 +257,9 @@ class CharacterScraper:
             rarity = min(colour_distance, key=lambda x: x[1])[0].upper()
             results[f"pet_{i}_id"] = self.service.get_pet_id(val)
             results[f"pet_{i}_rarity"] = rarity
-            logger.debug(f"[SCRAPE_PETS] Found {val} of rarity {rarity}")
+            self.logger.advdebug(f"Found {val} of rarity {rarity}")
 
-        logger.debug("[SCRAPE_PETS] Finished scraping")
+        self.logger.debug("Finished scraping")
         # Exit pet screen and wait until we can see the button again
         self.screen.tap(500, 1500)
         self.screen.wait_for_state("../buttons/character_screen/pet")
@@ -264,8 +280,8 @@ class CharacterScraper:
             self.screen.wait_for_state("../character_scraper/br_state")
         img = self.screen.update()
         value = self.processor.extract_text_from_area(img, (820, 1000, 250, 300))
-        logger.debug(f"[SCRAPE_TOTAL_BR] Found '{value}' and parsed as '{parse_text_number(value)}'")
-        logger.info(f"[SCRAPE_TOTAL_BR] Finished")
+        self.logger.debug(f"Found '{value}' and parsed as '{parse_text_number(value)}'")
+        self.logger.info(f"Finished")
         return {"total_br": parse_text_number(value)}
 
     def scrape_cultivation(self):
@@ -287,7 +303,7 @@ class CharacterScraper:
         try:
             _, character_y = self.get_start_loc(self.screen.CURRENT_SCREEN, 'br/character', 0)
         except Exception:
-            logger.error("[SCRAPE_CULTIVATION] Failed to find character details")
+            self.logger.error("Failed to find character details")
             return {}
         detail_x, detail_y_offset = 900, 20
         self.screen.tap(detail_x, character_y + detail_y_offset)
@@ -317,7 +333,7 @@ class CharacterScraper:
                         minor_stage = ms
                         break
                 if minor_stage is None:
-                    logger.warning(f"[SCRAPE_CULTIVATION] Missing minor stage for {stage}")
+                    self.logger.warning(f"Missing minor stage for {stage}")
 
             result[f"{name}_stage_id"] = stage_id
             result[f"{name}_minor_stage"] = minor_stage
@@ -341,7 +357,7 @@ class CharacterScraper:
         daemonfae_area = (250, 490, 960, 1050) if self.own_character else (700, 1000, 960, 1050)
         text = ' '.join(self.processor.extract_text_from_area(
             img, daemonfae_area, all_text=True, faint_text=self.own_character))
-        logger.debug(f"[SCRAPE_CULTIVATION] Read daemonfae text '{text}'")
+        self.logger.debug(f"Read daemonfae text '{text}'")
         # Match e.g., "Demon IV (Late)" or "Divinity 5 (Early)"
         pattern = r'\b([A-Za-z]+)\s+([IVX]+|\d+)\s*\(\s*(early|middle|late)\s*\)'
         match = re.search(pattern, text, re.IGNORECASE)
@@ -366,8 +382,8 @@ class CharacterScraper:
         })
         self.screen.tap(100, 1800)
         time.sleep(.25)
-        logger.debug(f"Parsed levels '{result}'")
-        logger.info("[SCRAPE_CULTIVATION] Finished scraping")
+        self.logger.debug(f"Parsed levels '{result}'")
+        self.logger.info("Finished scraping")
         return result
 
     def scrape_abilities(self):
@@ -387,7 +403,7 @@ class CharacterScraper:
         try:
             _, character_y = self.get_start_loc(self.screen.CURRENT_SCREEN, 'br/ability', 0)
         except Exception:
-            logger.error("[SCRAPE_ABILITIES] Failed to find character details")
+            self.logger.error("Failed to find character details")
             return {}
         detail_x, detail_y_offset = 900, 20
         self.screen.tap(detail_x, character_y + detail_y_offset)
@@ -414,7 +430,7 @@ class CharacterScraper:
         # Hit back button
         self.screen.tap(100, 1800)
         time.sleep(.25)
-        logger.info("[SCRAPE_ABILITIES] Finished scraping")
+        self.logger.info("Finished scraping")
         return results
 
     def scrape_relics(self):
@@ -431,17 +447,17 @@ class CharacterScraper:
         row1, row2, row3 = 500, 625, 700
 
         # Weapon
-        logger.debug(f"Getting weapon")
+        self.logger.debug(f"Getting weapon")
         values["weapon_id"] = self.service.get_relic_id(
             self.scrape_item(col1, row1, self.service.get_relic_names("WEAPON"), check_double_path=True), "WEAPON"
         )
         # Armour
-        logger.debug(f"Getting armour")
+        self.logger.debug(f"Getting armour")
         values["armour_id"] = self.service.get_relic_id(
             self.scrape_item(col1, row2, self.service.get_relic_names("ARMOR"), check_double_path=True), "ARMOR"
         )
         # Accessory
-        logger.debug(f"Getting accessory")
+        self.logger.debug(f"Getting accessory")
         values["accessory_id"] = self.service.get_relic_id(
             self.scrape_item(col1, row3, self.service.get_relic_names("ACCESSORY"), check_double_path=True), "ACCESSORY"
         )
@@ -449,7 +465,7 @@ class CharacterScraper:
         # Curio
         curios = self.service.get_curio_names()
         for i, r in enumerate([row1, row2, row3]):
-            logger.debug(f"Getting curio_{i + 1}")
+            self.logger.debug(f"Getting curio_{i + 1}")
             values[f"curio_{i + 1}_id"] = self.service.get_curio_id(self.scrape_item(col2, r, curios, full_match=True))
 
         # General relics
@@ -458,9 +474,9 @@ class CharacterScraper:
         for c in [col1, col2]:
             for r in [880, 1000, 1130]:
                 i += 1
-                logger.debug(f"Getting relic_{i}")
+                self.logger.debug(f"Getting relic_{i}")
                 values[f"relic_{i}_id"] = self.service.get_relic_id(self.scrape_item(c, r, general_relics), "GENERAL")
-        logger.info("[SCRAPE_RELICS] Finished scraping relics")
+        self.logger.info("Finished scraping relics")
         return values
 
     def scrape_br_stats(self):
@@ -480,7 +496,7 @@ class CharacterScraper:
             self.screen.tap(800, 1800)
             self.screen.wait_for_state("../character_scraper/br_state")
 
-        logger.debug("[SCRAPE_BR_STATS] Starting scrollshot")
+        self.logger.debug("Starting scrollshot")
         path = "tmp/br_scrollshot.png"
         self.screen.capture_scrollshot(path, 200, 250,
                                        (820, 1300, 820, 1200), (0, 1080, 800, 1700))
@@ -493,13 +509,13 @@ class CharacterScraper:
             try:
                 val = self.get_value(path, x, y)
             except Exception as e:
-                logger.error(f"Failed to find BR stat {i} at x={x}, y={y}")
+                self.logger.error(f"Failed to find BR stat {i} at x={x}, y={y}")
                 raise e
             if not val:
                 values[i] = 0
             else:
                 values[i] = val
-        logger.info("[SCRAPE_BR_STATS] Finished scraping")
+        self.logger.info("Finished scraping")
         return values
 
     def scrape_stat_stats(self):
@@ -531,7 +547,7 @@ class CharacterScraper:
             self.screen.tap(1000, 1800)
             self.screen.wait_for_state("../character_scraper/stat_state")
 
-        logger.debug("[SCRAPE_STAT_STATS] Starting scrollshot")
+        self.logger.debug("Starting scrollshot")
         path = "tmp/stat_scrollshot.png"
         self.screen.capture_scrollshot(path, 200, 250,
                                        (640, 1300, 640, 1200), (0, 1080, 800, 1700))
@@ -541,7 +557,7 @@ class CharacterScraper:
         values = {}
         n_reset = 6
         for idx, i in enumerate(ids):
-            logger.debug(f"[scrape_stats_stats] Finding value for '{i}'")
+            self.logger.advdebug(f"Finding value for '{i}'")
             # Update start value every n_reset items to prevent drift
             if idx % n_reset == 0:
                 x, y_origin = self.get_start_loc(path, f'stats/{i}', x_offset)
@@ -549,19 +565,19 @@ class CharacterScraper:
             try:
                 val = self.get_value(path, x, y)
             except Exception as e:
-                logger.error(f"Failed to find general stat {i} at x={x}, y={y}")
+                self.logger.error(f"Failed to find general stat {i} at x={x}, y={y}")
                 raise e
             if not val:
                 values[i] = 0
             else:
                 values[i] = val
-        logger.debug("[SCRAPE_STAT_STATS] Finished scraping")
+        self.logger.debug("Finished scraping")
         return values
 
     def scrape(self):
         """ Scrapes full character stats """
         full_stats = {}
-        logger.info("[SCRAPE] Starting character scrape")
+        self.logger.info("Starting character scrape")
         try:
             if not self.own_character:
                 # Get character identifying information
@@ -570,11 +586,11 @@ class CharacterScraper:
                 full_stats.update(self.scrape_relics())
                 full_stats.update(self.scrape_pets())
             else:
-                logger.info("[SCRAPE] Skipped relic and name values as looking at own character")
+                self.logger.info("Skipped relic and name values as looking at own character")
             # Open compare screen by clicking the button
             time.sleep(0.25)
             if not self.screen.tap_button("character_screen/compare_button"):
-                logger.warning("[SCRAPE_TOTAL_BR] Failed to click compare br button")
+                self.logger.warning("Failed to click compare br button")
                 return {}
             # Set screen masking and filtering
             self.screen.filter_notifications = True
@@ -592,6 +608,6 @@ class CharacterScraper:
         except Exception as e:
             self.screen.back()
             raise e
-        logger.info("[SCRAPE] Finished character scrape")
+        self.logger.info("Finished character scrape")
         self.screen.back()
         return full_stats

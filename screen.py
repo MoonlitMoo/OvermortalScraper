@@ -78,9 +78,9 @@ class Screen:
             name = f"screenshot_{timestamp}.png"
 
         if cv2.imwrite(f'screencaps/{name}', img):
-            self.logger.info(f"[Screen] Saved screenshot: {name}")
+            self.logger.info(f"Saved screenshot: {name}")
         else:
-            self.logger.warning(f"[Screen] Failed to save screenshot: {name}")
+            self.logger.warning(f"Failed to save screenshot: {name}")
 
     def capture_filter_notifications(self, name: str = None, retries: int = 5, delay: float = 1.0,
                                      green_mask=[200, 400, 100, 300]):
@@ -107,7 +107,7 @@ class Screen:
                 timestamp = time.strftime("%Y%m%d_%H%M%S")
                 name = f"screenshot_{timestamp}.png"
             cv2.imwrite(f'screencaps/{name}', self.colour())
-            self.logger.debug(f"[Screen] Saved clean screenshot: {name}")
+            self.logger.info(f"Saved clean screenshot: {name}")
         return False
 
     def capture_scrollshot(self, file: str, overlap: int, offset: int, scroll_params, crop_area=None, max_shots: int = 50):
@@ -130,7 +130,7 @@ class Screen:
                 # Break if we have found similar images three times in a row+
                 if similar_images(prev_img, img):
                     if similar_count > 2:
-                        self.logger.debug("No change detected, stopping.")
+                        self.logger.advdebug("No change detected, stopping.")
                         break
                     else:
                         similar_count += 1
@@ -187,7 +187,7 @@ class Screen:
             green_ratio = green_pixels / total_pixels
 
             if debug:
-                self.logger.debug(f"[Screen] Attempt {attempt + 1}: Green coverage = {green_ratio:.6f}")
+                self.logger.advdebug(f"Attempt {attempt + 1}: Green coverage = {green_ratio:.6f}")
                 cv2.imshow("Green locations", crop)
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
@@ -195,10 +195,10 @@ class Screen:
             if green_ratio < 0.001:  # Less than 0.1% green pixels → accept
                 return True
             else:
-                self.logger.debug("[Screen] Notification detected, retrying...")
+                self.logger.advdebug("Notification detected, retrying...")
                 time.sleep(delay)
 
-        self.logger.warning(f"[Screen] Failed to get clean screen after {retries} retries.")
+        self.logger.advdebug(f"Failed to get clean screen after {retries} retries.")
         return False
 
     def _load_template_image(self, template_path):
