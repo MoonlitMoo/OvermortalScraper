@@ -21,7 +21,7 @@ def scraper(db_session):
 
 
 @pytest.mark.parametrize("current_taoist, expected",
-                         [[0, (550, 300)], [1, (200, 300)], [2, (900, 300)], [100, None]])
+                         [[1, (550, 300)], [2, (200, 300)], [3, (900, 300)], [101, None]])
 def test_get_next_taoist_special_case(scraper, current_taoist, expected):
     scraper.current_taoist = current_taoist
     pos = scraper.get_taoist_pixels()
@@ -33,9 +33,9 @@ def test_get_next_taoist_on_board(scraper):
     ranks = scraper.get_visible_ranks()
     first_rank = min(ranks.keys())
     # Look for first rank
-    scraper.current_taoist = first_rank - 1
-    x1, y1 = scraper.get_taoist_pixels()
     scraper.current_taoist = first_rank
+    x1, y1 = scraper.get_taoist_pixels()
+    scraper.current_taoist = first_rank + 1
     # Look for second rank
     x2, y2 = scraper.get_taoist_pixels()
     assert x1 == x2, "X val is different for numerical ranks"
@@ -43,10 +43,15 @@ def test_get_next_taoist_on_board(scraper):
 
     # See if we can scroll to next ranks
     last_rank = max(ranks.keys())
-    scraper.current_taoist = last_rank
+    scraper.current_taoist = last_rank + 1
     x3, y3 = scraper.get_taoist_pixels()
     assert x3, "X val for scroll rank not found"
     assert y3, "Y val for scroll rank not found"
+
+
+def test_just_keep_scrolling(scraper):
+    scraper.current_taoist = 100
+    x, y = scraper.get_taoist_pixels()
 
 
 def test_scrape_row_taoist_card(scraper):
@@ -138,5 +143,7 @@ def test_run(scraper, caplog, monkeypatch):
     monkeypatch.setattr(scraper.taoist_scraper, "scrape", lambda: mock_scrape)
     monkeypatch.setattr(scraper.service, "add_taoist_from_scrape", lambda x: MockTaoist())
     monkeypatch.setattr(scraper.service, "add_duel_result", lambda winner_id, loser_id: 0)
+    # Duel exits char screen
+    monkeypatch.setattr(scraper, "duel_taoist", lambda: scraper.screen.back())
     scraper.my_database_id = 0
     scraper.run(allow_self_update=False)

@@ -203,10 +203,12 @@ class RankingScraper:
                 else:
                     self.logger.warning(f"Failed to get rank from text '{text}'.")
 
-        if not ranks:
+        # Fail if we find less than 1 rank
+        # (one means that only found self, edge case when character is open while looking for ranks)
+        if len(ranks) <= 1:
             self.logger.warning(f"Failed to get any ranks.")
             self.screen.capture("debug/leaderboard_read_fail.png", update=False)
-            return {}
+            raise ValueError("No ranks found on screen")
 
         # Last one is always me, so we can trim it off
         return {r: y for r, y in zip(ranks[:-1], y_vals[:-1])}
@@ -232,17 +234,14 @@ class RankingScraper:
         assert 3 < self.current_taoist < 101, "Unknown taoist case"
 
         ranks = self.get_visible_ranks()
-        if not ranks:
-            self.screen.capture(f"debug/no_ranks_found.png", update=False)
-            raise ValueError("No ranks found on screen")
 
         _iter, max_iter = 0, 100
         # Continue while max and min of ranks < current rank (i.e. screen showing higher range than we want)
         while max(ranks) < self.current_taoist and min(ranks) < self.current_taoist and _iter < max_iter:
             _iter += 1
             # Assume we are above and scroll down until we find the right range.
-            self.screen.swipe(5, 1200, 5, 1000, 200)  # 200 pixel ~1.5 rows
-            self.screen.swipe(5, 1200, 500, 1200, 100)  # Slide horizontal to stop any further scrolling
+            self.screen.swipe(1079, 1200, 1079, 1000, 200)  # 200 pixel ~1.5 rows
+            self.screen.tap(1079, 1185)
             ranks = self.get_visible_ranks()
 
         if self.current_taoist not in ranks:

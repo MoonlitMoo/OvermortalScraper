@@ -25,7 +25,7 @@ logging.basicConfig(
     datefmt='%H:%M:%S',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("../overmortal_bot.log", mode='w')
+        logging.FileHandler("overmortal_bot.log", mode='w')
     ]
 )
 
