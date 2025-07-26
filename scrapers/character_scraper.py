@@ -164,7 +164,11 @@ class CharacterScraper:
 
         all_text = self.processor.extract_text_from_area(img, name_bbox, all_text=True)
         # Join all the text and rely on enhancement to split off the name
-        full_name = ' '.join(all_text).split("+")[0].strip()
+        # Otherwise (no enhancement) just assume that the first found value is probably correct
+        if "+" in ' '.join(all_text):
+            full_name = ' '.join(all_text).split("+")[0].strip()
+        else:
+            full_name = all_text[0]
 
         # Look for double path in any of the full text we find
         if check_double_path:
@@ -185,7 +189,7 @@ class CharacterScraper:
         valid_names = valid_names if isinstance(valid_names, list) else [e.value for e in valid_names]
         item, sim = self.validate_string(test_name, valid_names, item_type)
         if sim < self.SIMILARITY_THRESHOLD:
-            self.screen.capture(f"debug/unknown_item_{all_text[0]}.png")
+            self.screen.capture(f"debug/unknown_item_{test_name}.png", update=False)
 
         # Return back to main screen
         self.screen.tap(500, 1800)
