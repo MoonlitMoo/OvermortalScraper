@@ -1,5 +1,5 @@
 from .base import Base
-from sqlalchemy import Column, Integer, Float, String, ForeignKey, Enum
+from sqlalchemy import Column, Integer, Float, String, ForeignKey, Enum, DateTime, func
 from sqlalchemy.orm import relationship
 
 from models.cultivation import CultivationMinorStage, Divinity
@@ -12,6 +12,7 @@ class Taoist(Base):
     # Basic info
     name = Column(String, nullable=False)
     total_br = Column(Float, nullable=False)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
 
     # Relic + curios
     weapon_id = Column(Integer, ForeignKey("Relic.id"))
