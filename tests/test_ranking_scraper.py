@@ -119,9 +119,18 @@ def test_scrape_own_taoist(scraper, caplog):
 
 @save_log
 def test_run(scraper, caplog, monkeypatch):
-    """ Test we can go through all the taoists (without scraping)
+    """ Test we can go through all the taoists (without scraping, but with duelling)
     Needs to start at the top of the leaderboard.
     """
-    monkeypatch.setattr(scraper.taoist_scraper, "scrape", lambda: {time.sleep(0.5)})
-    monkeypatch.setattr(scraper.service, "add_taoist_from_scrape", lambda x: 0)
+
+    def mock_scrape():
+        time.sleep(0.5)
+        return 1
+
+    class MockTaoist:
+        id = 0
+
+    monkeypatch.setattr(scraper.taoist_scraper, "scrape", lambda: mock_scrape)
+    monkeypatch.setattr(scraper.service, "add_taoist_from_scrape", lambda x: MockTaoist())
+    scraper.my_database_id = 0
     scraper.run(allow_self_update=False)

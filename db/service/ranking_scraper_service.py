@@ -57,3 +57,6 @@ class RankingScraperService:
         self.db.commit()
         self.db.refresh(taoist)
         return taoist
+
+    def add_duel_result(self, winner_id, loser_id):
+        pass

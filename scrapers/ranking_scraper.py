@@ -225,14 +225,21 @@ class RankingScraper:
         name, br = self.scrape_taoist_card(row_x, row_y)
         taoist_id = self.service.check_for_existing_taoist(name, br)
         do_update = True if taoist_id is None else False
+        self.screen.tap(row_x, row_y)
         if do_update:
-            self.screen.tap(row_x, row_y)
             time.sleep(.5)
             taoist_data = self.taoist_scraper.scrape()
             # Add taoist and get id in same step
             taoist_id = self.service.add_taoist_from_scrape(taoist_data).id
-            self.screen.back()
         self.logger.info(f"Scraped rank {self.current_taoist}.")
+
+        # Duel and save results.
+        did_win = self.duel_taoist()
+        if did_win:
+            self.service.add_duel_result(winner_id=self.my_database_id, loser_id=taoist_id)
+        else:
+            self.service.add_duel_result(winner_id=taoist_id, loser_id=self.my_database_id)
+
         return do_update
 
     def get_visible_ranks(self):
@@ -297,15 +304,23 @@ class RankingScraper:
         assert 3 < self.current_taoist < 101, "Unknown taoist case"
 
         ranks = self.get_visible_ranks()
-        # Try scroll if not found
-        if self.current_taoist not in ranks:
+        if not ranks:
+            self.screen.capture(f"debug/no_ranks_found.png", update=False)
+            raise ValueError("No ranks found on screen")
+
+        _iter, max_iter = 0, 100
+        # Continue while max and min of ranks < current rank (i.e. screen showing higher range than we want)
+        while max(ranks) < self.current_taoist and min(ranks) < self.current_taoist and _iter < max_iter:
+            _iter += 1
+            # Assume we are above and scroll down until we find the right range.
             self.screen.swipe(5, 1200, 5, 1000, 200)  # 200 pixel ~1.5 rows
             self.screen.swipe(5, 1200, 500, 1200, 100)  # Slide horizontal to stop any further scrolling
             ranks = self.get_visible_ranks()
-            if self.current_taoist not in ranks:
-                self.logger.warning(f"Failed to get next taoist '{self.current_taoist}' after scroll")
-                self.screen.capture(f"debug/rank_{self.current_taoist}_missing.png", update=False)
-                return None
+
+        if self.current_taoist not in ranks:
+            self.logger.warning(f"Failed to get current taoist '{self.current_taoist}' after scrolling {_iter} times")
+            self.screen.capture(f"debug/rank_{self.current_taoist}_missing.png", update=False)
+            return None
         return 300, ranks[self.current_taoist]
 
     def run(self, max_rank: int = 100, allow_self_update: bool = True):
