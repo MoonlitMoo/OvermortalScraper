@@ -3,6 +3,9 @@ import time
 
 import pytest
 
+from log import logger
+from scrapers.screenshot_processor import ScreenshotProcesser
+from screen import Screen
 from .utils import db_session, fix_dirs, save_log
 
 from scrapers.ranking_scraper import RankingScraper
@@ -11,7 +14,9 @@ from scrapers.ranking_scraper import RankingScraper
 @pytest.fixture
 def scraper(db_session):
     """ Create the scraper to use with correct path to current screen. """
-    s = RankingScraper(db_session)
+    screen = Screen(logger)
+    processor = ScreenshotProcesser()
+    s = RankingScraper(screen=screen, session=db_session, processor=processor, logger=logger)
     return s
 
 

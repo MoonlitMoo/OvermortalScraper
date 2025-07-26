@@ -1,20 +1,45 @@
 import time
 
-from log import logger
 from scrapers.character_scraper import CharacterScraper
-from scrapers.screenshot_processor import parse_text_number
+from scrapers.screenshot_processor import parse_text_number, ScreenshotProcesser
+from screen import Screen
 from service.char_scraper_service import CharacterScraperService
 from service.ranking_scraper_service import RankingScraperService
 
 
 class RankingScraper:
-    """ Scrapes taoist data from the Chaos Ranking leaderboard. """
+    """ Scrapes taoist data from the Chaos Ranking leaderboard.
 
-    def __init__(self, session):
+    Parameters
+    ----------
+    session : Session
+        The database to create the services to.
+
+    Attributes
+    ----------
+    screen : Screen
+        The instance to interact with emulator with.
+    service : CharacterScraperService
+        Interact with database for this scraper specific needs.
+    processor : ScreenshotProcesser
+        OCR processor for screenshots.
+    logger : Logger
+        The log file to output to.
+    taoist_scraper : CharacterScraper
+        The scraper for characters
+    current_taoist : int
+        The last scraped taoist
+    my_ranking : int
+        Ranking of own taoist
+    """
+
+    def __init__(self, screen: Screen, session, processor: ScreenshotProcesser, logger):
+        self.logger = logger
+        self.screen = screen
         self.service = RankingScraperService(session)
-        self.taoist_scraper = CharacterScraper(CharacterScraperService(session))
-        self.screen = self.taoist_scraper.screen
-        self.processor = self.taoist_scraper.processor
+        self.processor = processor
+        self.taoist_scraper = CharacterScraper(
+            screen=screen, service=CharacterScraperService(session), processor=processor, logger=logger)
 
         # Setup screen notification detection
         self.screen.green_select = (300, 900, 700, 900)
@@ -54,7 +79,7 @@ class RankingScraper:
 
             # Attempt to click the compare BR button to get BR value
             if not self.screen.tap_button("character_screen/compare_button"):
-                logger.warning("[SCRAPE_TAOIST_CARD] Failed to click compare BR button to get total BR")
+                self.logger.warning("Failed to click compare BR button to get total BR")
                 br_val = 0
             else:
                 time.sleep(0.5)
@@ -126,7 +151,7 @@ class RankingScraper:
         name, br_val = self.scrape_taoist_card(*my_coords)
 
         if not self.requires_scrape(name, br_val):
-            logger.debug("[RankingScraper SCRAPE_SELF] Did not scrape self.")
+            self.logger.debug("Did not scrape self.")
             self.current_taoist = original_taoist
             return False
 
@@ -152,7 +177,7 @@ class RankingScraper:
 
         self.taoist_scraper.own_character = False
         self.service.add_taoist_from_scrape(my_data)
-        logger.debug("[RankingScraper SCRAPE_SELF] Scraped self.")
+        self.logger.debug("Scraped self.")
         return True
 
     def scrape_taoist(self, row_x, row_y):
@@ -181,7 +206,7 @@ class RankingScraper:
             taoist_data = self.taoist_scraper.scrape()
             self.service.add_taoist_from_scrape(taoist_data)
         self.screen.back()
-        logger.debug(f"[RankingScraper SCRAPE_TAOIST] Scraped rank {self.current_taoist}.")
+        self.logger.info(f"Scraped rank {self.current_taoist}.")
         # TODO: Duel
         return not skip
 
@@ -214,12 +239,12 @@ class RankingScraper:
                 if ranks:
                     ranks.append(ranks[-1] + 1)
                     y_vals.append(y + 30)
-                    logger.debug(f"[get_next_taoist] Failed to get rank, assumed to be {ranks[-1]} due to last rank")
+                    self.logger.debug(f"Failed to get rank, assumed to be {ranks[-1]} due to last rank")
                 else:
-                    logger.warning(f"[get_next_taoist] Failed to get rank from text '{text}'.")
+                    self.logger.warning(f"Failed to get rank from text '{text}'.")
 
         if not ranks:
-            logger.warning(f"[get_next_taoist] Failed to get any ranks.")
+            self.logger.warning(f"Failed to get any ranks.")
             self.screen.capture("debug/leaderboard_read_fail.png", update=False)
             return {}
 
@@ -257,7 +282,7 @@ class RankingScraper:
             self.screen.swipe(5, 1200, 500, 1200, 100)  # Slide horizontal to stop any further scrolling
             ranks = self.get_visible_ranks()
             if next_rank not in ranks:
-                logger.warning(f"[get_next_taoist] Failed to get next taoist '{next_rank}' after scroll")
+                self.logger.warning(f"Failed to get next taoist '{next_rank}' after scroll")
                 self.screen.capture(f"debug/rank_{next_rank}_missing.png", update=False)
                 return None
         return 300, ranks[next_rank]
@@ -292,4 +317,4 @@ class RankingScraper:
             total_read += 1
             time.sleep(.25)
 
-        logger.info(f"[RankingScraper RUN] Added {total_added}/{total_read} taoists from the leaderboard.")
+        self.logger.info(f"Added {total_added}/{total_read} taoists from the leaderboard.")
