@@ -95,7 +95,7 @@ class CharacterScraper:
             self.logger.advdebug(f"Retrieved text '{value}' as '0'")
             return 0
 
-    def validate_string(self, value, valid_strings, func_desc, str_desc):
+    def validate_string(self, value: str, valid_strings: list, str_desc: str):
         """ Returns a valid string from the given list. Uses closest match if not exact.
         Gives warning if closest match is not close.
 
@@ -105,8 +105,6 @@ class CharacterScraper:
             String to validate
         valid_strings : list of str
             The valid strings to match to
-        func_desc : str
-            A string describing the function calling validation
         str_desc : str
             A string describing what the value represents.
 
@@ -120,12 +118,12 @@ class CharacterScraper:
         similarities = [jellyfish.jaro_winkler_similarity(a, value) for a in valid_strings]
         index = similarities.index(max(similarities))
         if max(similarities) < self.SIMILARITY_THRESHOLD:
-            self.logger.warning(f"Unknown '{str_desc}' for '{func_desc}' of '{value}'")
-        self.logger.debug(f"Unknown '{str_desc}' for '{func_desc}' of '{value}'"
-                     f"using {valid_strings[index]} with similarity {similarities[index]:.3f}")
+            self.logger.warning(f"Unknown {str_desc} '{value}'")
+        self.logger.debug(f"Unknown {str_desc} '{value}' "
+                          f"using '{valid_strings[index]}' with similarity {similarities[index]:.3f}")
         return valid_strings[index], max(similarities)
 
-    def scrape_item(self, x, y, valid_names, full_match=False, check_double_path=False):
+    def scrape_item(self, x: int, y: int, valid_names: list, item_type: str, full_match=False, check_double_path=False):
         """ Scrapes an item for the name and turns it into an enumeration type.
         First opens it from the character screen.
         Generally separates out the last word as the name to check for most similar enumeration. Optionally can use full
@@ -139,6 +137,8 @@ class CharacterScraper:
             The y pixel coordinate of the item
         valid_names : list
             A list of accepted names the item should belong to
+        item_type : str
+            Description of item type
         full_match : bool, optional
             Whether to match full name against the enum, or just the last word.
         check_double_path : bool, optional
@@ -183,7 +183,7 @@ class CharacterScraper:
         # Look for most similar enum value
         test_name = full_name.replace(' ', '_').upper()
         valid_names = valid_names if isinstance(valid_names, list) else [e.value for e in valid_names]
-        item, sim = self.validate_string(test_name, valid_names, "SCRAPE_ITEM", "item")
+        item, sim = self.validate_string(test_name, valid_names, item_type)
         if sim < self.SIMILARITY_THRESHOLD:
             self.screen.capture(f"debug/unknown_item_{all_text[0]}.png")
 
@@ -247,9 +247,9 @@ class CharacterScraper:
         for x, i in zip(cols, ("front", "left", "right")):
             # Send to upper to match db
             val = self.processor.extract_text_from_area(inverted_img, (x, x + width, 1080, 1110)).upper()
-            val, _ = self.validate_string(val, valid_pets, "SCRAPE_PET", "pet")
+            val, _ = self.validate_string(val, valid_pets, "PET")
             # Calculate the closest colour to get rarity
-            colour = img[1190, x + int(width/2)][::-1]  # Reverse since BGR by default
+            colour = img[1190, x + int(width / 2)][::-1]  # Reverse since BGR by default
             colour_distance = [
                 (label, np.linalg.norm(colour - np.array(ref_rgb)))
                 for label, ref_rgb in reference_colours
@@ -317,12 +317,12 @@ class CharacterScraper:
         minor_stage_names = [v.value for v in CultivationMinorStage]
         # Iterate through the different cultivation blocks
         for y, name in zip([1010, 1100, 1185, 1270], ["magicka", "corporia", "swordia", "ghostia"]):
-            area = (*cultivation_x, y-40, y+40)
+            area = (*cultivation_x, y - 40, y + 40)
             text = ' '.join(self.processor.extract_text_from_area(
                 img, area, all_text=True, faint_text=self.own_character))
             # Get the stage
             stage = text.split(' ')[0].upper()
-            stage, _ = self.validate_string(stage, stage_names, "SCRAPE_CULTIVATION", "stage")
+            stage, _ = self.validate_string(stage, stage_names, "CULTIVATION_STAGE")
             stage_id = self.service.get_cultivate_stage_id(stage)
             minor_stage = None
             # If not novice, try minor stage on all text blocks
@@ -424,7 +424,7 @@ class CharacterScraper:
                 # Tends to work best with thresholding, sending to lower case to match db
                 val = ' '.join(self.processor.extract_text_from_area(img, (x, x + x_len, y, y + y_len),
                                                                      all_text=True, thresholding=True)).lower()
-                val, _ = self.validate_string(val, valid_abilities, "SCRAPE_ABILITIES", "ability")
+                val, _ = self.validate_string(val, valid_abilities, "ABILITY")
                 results[f"ability_{i}_id"] = self.service.get_ability_id(val)
                 i += 1
         # Hit back button
@@ -449,24 +449,31 @@ class CharacterScraper:
         # Weapon
         self.logger.debug(f"Getting weapon")
         values["weapon_id"] = self.service.get_relic_id(
-            self.scrape_item(col1, row1, self.service.get_relic_names("WEAPON"), check_double_path=True), "WEAPON"
+            self.scrape_item(
+                col1, row1, self.service.get_relic_names("WEAPON"), "RELIC_WEAPON", check_double_path=True),
+            "WEAPON"
         )
         # Armour
         self.logger.debug(f"Getting armour")
         values["armour_id"] = self.service.get_relic_id(
-            self.scrape_item(col1, row2, self.service.get_relic_names("ARMOR"), check_double_path=True), "ARMOR"
+            self.scrape_item(
+                col1, row2, self.service.get_relic_names("ARMOR"), "RELIC_ARMOR", check_double_path=True),
+            "ARMOR"
         )
         # Accessory
         self.logger.debug(f"Getting accessory")
         values["accessory_id"] = self.service.get_relic_id(
-            self.scrape_item(col1, row3, self.service.get_relic_names("ACCESSORY"), check_double_path=True), "ACCESSORY"
+            self.scrape_item(
+                col1, row3, self.service.get_relic_names("ACCESSORY"), "RELIC_ACCESSORY", check_double_path=True),
+            "ACCESSORY"
         )
 
         # Curio
         curios = self.service.get_curio_names()
         for i, r in enumerate([row1, row2, row3]):
             self.logger.debug(f"Getting curio_{i + 1}")
-            values[f"curio_{i + 1}_id"] = self.service.get_curio_id(self.scrape_item(col2, r, curios, full_match=True))
+            values[f"curio_{i + 1}_id"] = self.service.get_curio_id(
+                self.scrape_item(col2, r, curios, "CURIO", full_match=True))
 
         # General relics
         general_relics = self.service.get_relic_names("GENERAL")
@@ -475,7 +482,8 @@ class CharacterScraper:
             for r in [880, 1000, 1130]:
                 i += 1
                 self.logger.debug(f"Getting relic_{i}")
-                values[f"relic_{i}_id"] = self.service.get_relic_id(self.scrape_item(c, r, general_relics), "GENERAL")
+                values[f"relic_{i}_id"] = self.service.get_relic_id(
+                    self.scrape_item(c, r, general_relics, "GENERAL_RELIC"), "GENERAL")
         self.logger.info("Finished scraping relics")
         return values
 
