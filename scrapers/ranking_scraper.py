@@ -202,7 +202,7 @@ class RankingScraper:
             time.sleep(.5)
             taoist_data = self.taoist_scraper.scrape()
             self.service.add_taoist_from_scrape(taoist_data)
-        self.screen.back()
+            self.screen.back()
         self.logger.info(f"Scraped rank {self.current_taoist}.")
         # TODO: Duel
         return do_update
