@@ -3,7 +3,7 @@ import cv2
 from core.screen import Screen
 
 screen = Screen(None)
-OUTPUT_PATH = 'extracted.png'
+OUTPUT_PATH = 'tmp/extracted.png'
 
 
 def draw_grid(grid_size=100, line_color=(0, 255, 0), text_color=(0, 0, 255), thickness=1, file=None):
@@ -29,7 +29,7 @@ def draw_grid(grid_size=100, line_color=(0, 255, 0), text_color=(0, 0, 255), thi
         cv2.line(img, (0, y), (width, y), line_color, thickness)
         cv2.putText(img, str(y), (2, y + 24), font, font_scale, text_color, font_thickness)
 
-    cv2.imwrite("screen-gridded.png", img)
+    cv2.imwrite("tmp/screen-gridded.png", img)
 
 
 def extract_section(x1, x2, y1, y2, file=screen.CURRENT_SCREEN):
