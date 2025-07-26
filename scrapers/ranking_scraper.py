@@ -49,103 +49,6 @@ class RankingScraper:
         self.my_ranking = None
         self.my_database_id = None
 
-    def duel_taoist(self):
-        """ Duels the current taoist, then navigates back to the leaderboard.
-
-        Returns
-        -------
-        did_win : bool
-            If the duel was won.
-        """
-        # Start screen by tapping more and duel buttons
-        self.screen.tap(200, 1225)
-        time.sleep(0.1)
-        if not self.screen.tap_button("character_screen/duel"):
-            self.logger.warning("Failed to get to start duel")
-            return None
-        time.sleep(0.1)
-        # Wait until duel is finished, with 60s timeout for long duels
-        try:
-            self.screen.wait_for_any_state(["battle_screen/victory", "battle_screen/defeat"], timeout=60)
-        except StateNotReached:
-            return None
-        did_win = True if self.screen.find("state/battle_screen/victory") is not None else False
-        self.logger.debug(f"Duel finished with {'win' if did_win else 'loss'}")
-
-        # Navigate back to leaderboard by exiting end screen, swiping towards right to find leaderboard button.
-        self.screen.tap(550, 1850)
-        time.sleep(0.1)
-        self.screen.swipe(800, 1000, 200, 1000, 200)
-        self.screen.tap(1000, 800)
-        # Click chaos rankings button, then top BR
-        self.screen.tap_button("locations/town/chaos_rankings")
-        self.screen.wait_for_state("locations/town/chaos_rankings/main_page")
-        self.screen.tap(300, 500)
-        self.screen.wait_for_state("locations/town/chaos_rankings/br_leaderboard")
-
-        self.logger.debug(f"Returned to leaderboard")
-        return did_win
-
-    def scrape_taoist_card(self, row_x, row_y, my_card: bool = False):
-        """ Gets taoist name and BR total from the row card.
-
-        Parameters
-        ----------
-        row_x : int
-            Pixel x for card
-        row_y : int
-            Pixel y for card
-        my_card : bool
-            Whether this is the special my rank card
-
-        Returns
-        -------
-        name : str
-            Scraped name for the taoist
-        br_val : float
-            Scraped total BR for the taoist.
-        """
-        if self.current_taoist <= 3:
-            # Top rank: open the character directly and use the character screen. Can take a while for some reason.
-            self.screen.tap(row_x, row_y)
-            time.sleep(1.5)
-            name = self.taoist_scraper.scrape_name()['name']
-            time.sleep(0.5)
-
-            # Attempt to click the compare BR button to get BR value
-            if not self.screen.tap_button("character_screen/compare_button"):
-                self.logger.warning("Failed to click compare BR button to get total BR")
-                br_val = 0
-            else:
-                time.sleep(0.5)
-                br_val = self.taoist_scraper.scrape_total_br()["total_br"]
-
-            self.screen.back()
-            time.sleep(0.2)
-            self.screen.back()
-            time.sleep(0.2)
-
-        else:
-            # Lower rank: use OCR to extract name and BR from the list view
-            # Special card has centred name, while normal is aligned to the top
-            name_box = (300, 750, row_y - 50, row_y + 50) if my_card else (300, 750, row_y - 50, row_y)
-            br_box = (830, 1000, row_y - 25, row_y + 25)
-
-            self.screen.filter_notifications = True
-            self.screen.update()
-
-            name_text = self.processor.extract_text_from_area(
-                self.screen.CURRENT_SCREEN, name_box, use_name_reader=True)
-            br_text = self.processor.extract_text_from_area(
-                self.screen.CURRENT_SCREEN, br_box)
-
-            self.screen.filter_notifications = False
-
-            name = name_text
-            br_val = parse_text_number(br_text)
-
-        return name, br_val
-
     def setup_self(self, allow_update: bool = True):
         """ Gets id and ranking of own taoist, updates data if required by default.
 
@@ -207,40 +110,65 @@ class RankingScraper:
         self.logger.debug("Updated own taoist data")
         return True
 
-    def scrape_taoist(self, row_x, row_y):
-        """ Checks current taoist and adds to database if necessary.
+    def scrape_taoist_card(self, row_x, row_y, my_card: bool = False):
+        """ Gets taoist name and BR total from the row card.
 
         Parameters
         ----------
         row_x : int
-            x pixel of taoist
+            Pixel x for card
         row_y : int
-            y pixel of taoist
+            Pixel y for card
+        my_card : bool
+            Whether this is the special my rank card
 
         Returns
         -------
-        bool
-            If taoist was added to database
+        name : str
+            Scraped name for the taoist
+        br_val : float
+            Scraped total BR for the taoist.
         """
-        name, br = self.scrape_taoist_card(row_x, row_y)
-        taoist_id = self.service.check_for_existing_taoist(name, br)
-        do_update = True if taoist_id is None else False
-        self.screen.tap(row_x, row_y)
-        if do_update:
-            time.sleep(.5)
-            taoist_data = self.taoist_scraper.scrape()
-            # Add taoist and get id in same step
-            taoist_id = self.service.add_taoist_from_scrape(taoist_data).id
-        self.logger.info(f"Scraped rank {self.current_taoist}.")
+        if self.current_taoist <= 3:
+            # Top rank: open the character directly and use the character screen. Can take a while for some reason.
+            self.screen.tap(row_x, row_y)
+            time.sleep(1.5)
+            name = self.taoist_scraper.scrape_name()['name']
+            time.sleep(0.5)
 
-        # Duel and save results.
-        did_win = self.duel_taoist()
-        if did_win:
-            self.service.add_duel_result(winner_id=self.my_database_id, loser_id=taoist_id)
+            # Attempt to click the compare BR button to get BR value
+            if not self.screen.tap_button("character_screen/compare_button"):
+                self.logger.warning("Failed to click compare BR button to get total BR")
+                br_val = 0
+            else:
+                time.sleep(0.5)
+                br_val = self.taoist_scraper.scrape_total_br()["total_br"]
+
+            self.screen.back()
+            time.sleep(0.2)
+            self.screen.back()
+            time.sleep(0.2)
+
         else:
-            self.service.add_duel_result(winner_id=taoist_id, loser_id=self.my_database_id)
+            # Lower rank: use OCR to extract name and BR from the list view
+            # Special card has centred name, while normal is aligned to the top
+            name_box = (300, 750, row_y - 50, row_y + 50) if my_card else (300, 750, row_y - 50, row_y)
+            br_box = (830, 1000, row_y - 25, row_y + 25)
 
-        return do_update
+            self.screen.filter_notifications = True
+            self.screen.update()
+
+            name_text = self.processor.extract_text_from_area(
+                self.screen.CURRENT_SCREEN, name_box, use_name_reader=True)
+            br_text = self.processor.extract_text_from_area(
+                self.screen.CURRENT_SCREEN, br_box)
+
+            self.screen.filter_notifications = False
+
+            name = name_text
+            br_val = parse_text_number(br_text)
+
+        return name, br_val
 
     def get_visible_ranks(self):
         """ Gets dictionary of rank to y value from the current screen.
@@ -322,6 +250,78 @@ class RankingScraper:
             self.screen.capture(f"debug/rank_{self.current_taoist}_missing.png", update=False)
             return None
         return 300, ranks[self.current_taoist]
+
+    def duel_taoist(self):
+        """ Duels the current taoist, then navigates back to the leaderboard.
+
+        Returns
+        -------
+        did_win : bool
+            If the duel was won.
+        """
+        # Start screen by tapping more and duel buttons
+        self.screen.tap(200, 1225)
+        time.sleep(0.1)
+        if not self.screen.tap_button("character_screen/duel"):
+            self.logger.warning("Failed to get to start duel")
+            return None
+        time.sleep(0.1)
+        # Wait until duel is finished, with 60s timeout for long duels
+        try:
+            self.screen.wait_for_any_state(["battle_screen/victory", "battle_screen/defeat"], timeout=60)
+        except StateNotReached:
+            return None
+        did_win = True if self.screen.find("state/battle_screen/victory") is not None else False
+        self.logger.debug(f"Duel finished with {'win' if did_win else 'loss'}")
+
+        # Navigate back to leaderboard by exiting end screen, swiping towards right to find leaderboard button.
+        self.screen.tap(550, 1850)
+        time.sleep(0.1)
+        self.screen.swipe(800, 1000, 200, 1000, 200)
+        self.screen.tap(1000, 800)
+        # Click chaos rankings button, then top BR
+        self.screen.tap_button("locations/town/chaos_rankings")
+        self.screen.wait_for_state("locations/town/chaos_rankings/main_page")
+        self.screen.tap(300, 500)
+        self.screen.wait_for_state("locations/town/chaos_rankings/br_leaderboard")
+
+        self.logger.debug(f"Returned to leaderboard")
+        return did_win
+
+    def scrape_taoist(self, row_x, row_y):
+        """ Checks current taoist and adds to database if necessary.
+
+        Parameters
+        ----------
+        row_x : int
+            x pixel of taoist
+        row_y : int
+            y pixel of taoist
+
+        Returns
+        -------
+        bool
+            If taoist was added to database
+        """
+        name, br = self.scrape_taoist_card(row_x, row_y)
+        taoist_id = self.service.check_for_existing_taoist(name, br)
+        do_update = True if taoist_id is None else False
+        self.screen.tap(row_x, row_y)
+        if do_update:
+            time.sleep(.5)
+            taoist_data = self.taoist_scraper.scrape()
+            # Add taoist and get id in same step
+            taoist_id = self.service.add_taoist_from_scrape(taoist_data).id
+        self.logger.info(f"Scraped rank {self.current_taoist}.")
+
+        # Duel and save results.
+        did_win = self.duel_taoist()
+        if did_win:
+            self.service.add_duel_result(winner_id=self.my_database_id, loser_id=taoist_id)
+        else:
+            self.service.add_duel_result(winner_id=taoist_id, loser_id=self.my_database_id)
+
+        return do_update
 
     def run(self, max_rank: int = 100, allow_self_update: bool = True):
         """ Iterates through leaderboard from current_taoist until max_rank.
