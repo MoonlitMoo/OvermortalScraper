@@ -96,7 +96,9 @@ def test_scrape_taoist(scraper, caplog):
 
 @save_log
 def test_skip_own_taoist(scraper, caplog, monkeypatch):
-    """ Makes sure that we skip own taoist while iterating. """
+    """ Makes sure that we skip own taoist while iterating.
+    Needs to have own rank on leaderboard visible.
+    """
     # Make sure we fail if we try scrape at all
     monkeypatch.setattr(scraper.taoist_scraper, "scrape", lambda: pytest.fail("Tried to scrape self"))
     # Set own ranking
@@ -105,12 +107,20 @@ def test_skip_own_taoist(scraper, caplog, monkeypatch):
         pytest.fail("Didn't get own ranking.")
     # Set iteration to try scrape self
     scraper.current_taoist = scraper.my_ranking - 1
-    scraper.run(max_rank=scraper.my_ranking)
+    scraper.run(max_rank=scraper.my_ranking, scrape_self=False)
+
+
+@save_log
+def test_scrape_own_taoist(scraper, caplog):
+    """ Checks that we can correctly scrape our own taoist. """
+    scraper.scrape_self()
 
 
 @save_log
 def test_run(scraper, caplog, monkeypatch):
-    """ Test we can go through all the taoists (without scraping) """
+    """ Test we can go through all the taoists (without scraping)
+    Needs to start at the top of the leaderboard.
+    """
     monkeypatch.setattr(scraper.taoist_scraper, "scrape", lambda: {})
     monkeypatch.setattr(scraper.service, "add_taoist_from_scrape", lambda x: 0)
     scraper.run()

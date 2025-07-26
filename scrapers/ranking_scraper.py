@@ -26,7 +26,7 @@ class RankingScraper:
         # Check win/loss
         pass
 
-    def scrape_taoist_card(self, row_x, row_y):
+    def scrape_taoist_card(self, row_x, row_y, my_card: bool = False):
         """ Gets taoist name and BR total from the row card. """
         if self.current_taoist <= 3:
             # Can't do it normally, so enter character and use char scraper.
@@ -46,7 +46,7 @@ class RankingScraper:
             time.sleep(.2)
         else:
             # Otherwise we define boxes based on row_y and OCR the values.
-            name_box = (300, 750, row_y - 50, row_y)
+            name_box = (300, 750, row_y - 50, row_y) if not my_card else (300, 750, row_y - 50, row_y + 50)
             br_box = (830, 1000, row_y - 25, row_y + 25)
             self.screen.filter_notifications = True
             self.screen.update()
@@ -58,16 +58,82 @@ class RankingScraper:
             br_val = parse_text_number(br_text)
         return name, br_val
 
+    def requires_scrape(self, name: str, br: float):
+        """ Determines if the given name, br needs to be updated or added to the database
+        Checks for all taoists of the given name (probably very few duplicates of characters). Then checks to see if
+        their total BR has increased by a factor of 1%, if not we don't really need to add updated entry.
+
+        Parameters
+        ----------
+        name : str
+            Taoist name
+        br : float
+            Total BR of taoist.
+
+        Returns
+        -------
+        do_update : bool
+            Whether taoist needs to be updated/added
+        """
+        # Get all records for taoists by this name, assume no duplicate names.
+        records = self.service.get_taoist_records(name)
+        # Then, if there are any records < 1% BR from this, we will skip as more or less the same being.
+        do_update = not any([abs(r[2] / br - 1) < 0.01 for r in records])
+        return do_update
+
+    def scrape_self(self):
+        """ Scrapes own taoist. Special case as required to scrape multiple areas.
+
+        Returns
+        -------
+        bool
+            Whether self was scraped
+        """
+        top1_x, top1_y = 550, 300
+        my_x, my_y = 300, 1500
+        # Check if I need to be updated
+        temp = self.current_taoist
+        self.current_taoist = 4
+        name, br_val = self.scrape_taoist_card(my_x, my_y)
+        if not self.requires_scrape(name, br_val):
+            logger.debug(f"[RankingScraper SCRAPE_SELF] Did not scrape self.")
+            return False
+        self.current_taoist = temp
+        # Use top 1 taoist to compare against, because I'll never be the best :)
+        # This gets all data via COMPARE BR button.
+        self.taoist_scraper.own_character = True
+        self.screen.tap(top1_x, top1_y)
+        time.sleep(0.5)
+        my_data = self.taoist_scraper.scrape()
+        self.screen.back()
+        time.sleep(0.5)
+
+        # Now we update from my profile, with relics, pets, name
+        my_data.update({"name": name, "total_br": br_val})
+        # Open my character and get items
+        self.screen.tap(my_x, my_y)
+        time.sleep(0.5)
+        my_data.update(self.taoist_scraper.scrape_relics())
+        my_data.update(self.taoist_scraper.scrape_pets())
+        self.screen.back()
+        time.sleep(0.5)
+        self.taoist_scraper.own_character = False
+        self.service.add_taoist_from_scrape(my_data)
+        logger.debug(f"[RankingScraper SCRAPE_SELF] Scraped self.")
+        return True
+
     def scrape_taoist(self, row_x, row_y):
         """ Checks current taoist and adds to database if necessary.
 
         Parameters
+        ----------
         row_x : int
             x pixel of taoist
         row_y : int
             y pixel of taoist
 
         Returns
+        -------
         bool
             If taoist was added to database
         """
@@ -163,11 +229,24 @@ class RankingScraper:
                 return None
         return 300, ranks[next_rank]
 
-    def run(self, max_rank: int = 100):
+    def run(self, max_rank: int = 100, scrape_self: bool = True):
+        """ Iterates through leaderboard from current_taoist+1 until max_rank.
+
+        Parameters
+        ----------
+        max_rank : int
+            Maximum rank to scrape to
+        scrape_self : bool
+            Whether to update self.
+        """
         total_read = 0
         total_added = 0
 
-        # TODO: Scrape self
+        if scrape_self:
+            added = self.scrape_self()
+            if added:
+                total_added += 1
+            total_read += 1
 
         while self.current_taoist < max_rank:
             pos = self.get_next_taoist()
