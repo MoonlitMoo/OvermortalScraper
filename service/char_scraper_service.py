@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from models import CultivationStage, Ability, Pet, Relic, Curio
+from db.models import CultivationStage, Ability, Pet, Relic, Curio
 
 
 class CharacterScraperService:

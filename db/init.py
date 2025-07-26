@@ -1,11 +1,11 @@
 import csv
 from pathlib import Path
 
-from models import Ability, RarityLevel, Pet, Relic, Curio
-from models.base import Base
+from db.models import Ability, RarityLevel, Pet, Relic, Curio
+from db.models.base import Base
 from db.session import engine, SessionLocal
-from models.cultivation import CultivationStage, CultivationType
-from models.relic import Divinity, RelicType
+from db.models.cultivation import CultivationStage, CultivationType
+from db.models.relic import Divinity, RelicType
 
 
 def init_db():

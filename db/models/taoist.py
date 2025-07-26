@@ -2,7 +2,7 @@ from .base import Base
 from sqlalchemy import Column, Integer, Float, String, ForeignKey, Enum, DateTime, func
 from sqlalchemy.orm import relationship
 
-from models.cultivation import CultivationMinorStage, Divinity
+from db.models.cultivation import CultivationMinorStage, Divinity
 
 
 class Taoist(Base):

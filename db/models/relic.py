@@ -1,9 +1,9 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Enum, UniqueConstraint
 from sqlalchemy.orm import relationship
-from models.base import Base
+from db.models.base import Base
 import enum
 
-from models.cultivation import Divinity
+from db.models.cultivation import Divinity
 
 
 class RelicType(enum.Enum):

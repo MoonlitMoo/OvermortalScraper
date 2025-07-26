@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from models import Taoist, Ability, Pet
+from db.models import Taoist, Ability, Pet
 
 
 class RankingScraperService:

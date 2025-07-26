@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 
 from db.init import seed_cultivation_levels, seed_rarities, seed_abilities, seed_pet, seed_relics, seed_curios
 from log import logger
-from models.base import Base
+from db.models.base import Base
 
 # Create a test engine (use SQLite in-memory DB)
 TEST_DB_URL = "sqlite:///:memory:"

@@ -66,5 +66,5 @@ def debug_template_match():
 
 
 draw_grid()
-extract_section(400, 670, 1520, 1670)
-debug_template_match()
+extract_section(300, 450, 800, 850)
+# debug_template_match()

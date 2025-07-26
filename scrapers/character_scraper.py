@@ -5,7 +5,7 @@ import cv2
 import jellyfish
 import numpy as np
 
-from models.cultivation import CultivationMinorStage
+from db.models.cultivation import CultivationMinorStage
 from screen import Screen
 from service.char_scraper_service import CharacterScraperService
 from scrapers.screenshot_processor import ScreenshotProcessor, parse_text_number
