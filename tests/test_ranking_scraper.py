@@ -6,7 +6,7 @@ import pytest
 from core.log import logger
 from core.screenshot_processor import ScreenshotProcessor
 from core.screen import Screen
-from .utils import db_session, save_log
+from .utils import db_session, save_log, taoist_data
 
 from scrapers.ranking_scraper import RankingScraper
 
@@ -117,6 +117,11 @@ def test_scrape_own_taoist(scraper, caplog):
     scraper.setup_self()
 
 
+def test_add_duel_record(scraper, taoist_data):
+    scraper.service.add_taoist_from_scrape(taoist_data)
+    scraper.service.add_duel_result(0, 0)
+
+
 @save_log
 def test_run(scraper, caplog, monkeypatch):
     """ Test we can go through all the taoists (without scraping, but with duelling)
@@ -132,5 +137,6 @@ def test_run(scraper, caplog, monkeypatch):
 
     monkeypatch.setattr(scraper.taoist_scraper, "scrape", lambda: mock_scrape)
     monkeypatch.setattr(scraper.service, "add_taoist_from_scrape", lambda x: MockTaoist())
+    monkeypatch.setattr(scraper.service, "add_duel_result", lambda winner_id, loser_id: 0)
     scraper.my_database_id = 0
     scraper.run(allow_self_update=False)

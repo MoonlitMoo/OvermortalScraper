@@ -13,6 +13,7 @@ from sqlalchemy.orm import sessionmaker
 
 from db.init import seed_cultivation_levels, seed_rarities, seed_abilities, seed_pet, seed_relics, seed_curios
 from core.log import logger
+from db.models import Taoist
 from db.models.base import Base
 
 # Create a test engine (use SQLite in-memory DB)
@@ -24,7 +25,8 @@ def save_log(test_func):
     def wrapper(*args, **kwargs):
         caplog = kwargs.get("caplog", None)
         caplog.set_level(logging.DEBUG, logger=logger.name)
-        formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] [%(name)s.%(funcName)s] %(message)s', datefmt='%H:%M:%S')
+        formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] [%(name)s.%(funcName)s] %(message)s',
+                                      datefmt='%H:%M:%S')
         caplog.handler.setFormatter(formatter)
         try:
             test_func(*args, **kwargs)
@@ -186,3 +188,15 @@ def fix_dirs(target_dir: str = "OvermortalPlayer"):
         current = parent
         if os.path.basename(current) == target_dir:
             break
+
+
+@pytest.fixture()
+def taoist_data():
+    return {
+        "name": "test",
+        "total_br": 0,
+        "corporia_stage_id": 1,
+        "magicka_stage_id": 1,
+        "swordia_stage_id": 1,
+        "ghostia_stage_id": 1,
+    }
