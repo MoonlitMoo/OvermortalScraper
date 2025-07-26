@@ -60,7 +60,6 @@ def test_scrape_abilities(scraper, caplog):
     Expected to run from Taoist Compare BR screen.
     """
     res = scraper.scrape_abilities()
-    print("\n" + caplog.text)
     assert res
 
 
@@ -90,6 +89,5 @@ def test_update_speeds(scraper):
         times.append(time.perf_counter_ns() - start)
     avg = np.average(times)
     std = np.std(times)
-    screen.stop()
     print()
     print(f"Avg update time {avg / 1e9:.3f} ({std / 1e9:.3f}) s")
