@@ -108,13 +108,13 @@ def test_skip_own_taoist(scraper, caplog, monkeypatch):
         pytest.fail("Didn't get own ranking.")
     # Set iteration to try scrape self
     scraper.current_taoist = scraper.my_ranking - 1
-    scraper.run(max_rank=scraper.my_ranking, scrape_self=False)
+    scraper.run(max_rank=scraper.my_ranking, allow_self_update=False)
 
 
 @save_log
 def test_scrape_own_taoist(scraper, caplog):
     """ Checks that we can correctly scrape our own taoist. """
-    scraper.scrape_self()
+    scraper.setup_self()
 
 
 @save_log
@@ -124,4 +124,4 @@ def test_run(scraper, caplog, monkeypatch):
     """
     monkeypatch.setattr(scraper.taoist_scraper, "scrape", lambda: {time.sleep(0.5)})
     monkeypatch.setattr(scraper.service, "add_taoist_from_scrape", lambda x: 0)
-    scraper.run(scrape_self=False)
+    scraper.run(allow_self_update=False)

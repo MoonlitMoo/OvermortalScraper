@@ -19,9 +19,32 @@ class RankingScraperService:
             raise ValueError(f"Ability not found: {name}")
         return ability.id
 
-    def get_taoist_records(self, name: str):
-        """Return a list of (name, total_br) for Taoists matching the given name."""
-        return self.db.query(Taoist.id, Taoist.name, Taoist.total_br).filter(Taoist.name == name).all()
+    def check_for_existing_taoist(self, name: str, new_br: float):
+        """ Returns the ID of the most recent Taoist within ±1% of new_br, if any.
+
+        Parameters
+        ----------
+        name : str
+            The name of the taoist to look for
+        new_br : float
+            The current br of the taoist
+
+        Returns
+        -------
+        int | None
+            The id of the fuzzy matched taoist if any.
+        """
+        lower = new_br * 0.99
+        upper = new_br * 1.01
+
+        result = (
+            self.db.query(Taoist.id)
+            .filter(Taoist.name == name, Taoist.total_br.between(lower, upper))
+            .order_by(Taoist.created_at.desc())  # assuming you have a `date` column
+            .first()
+        )
+
+        return result[0] if result else None
 
     def add_taoist_from_scrape(self, data: dict):
         """
