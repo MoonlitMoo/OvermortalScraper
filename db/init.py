@@ -122,7 +122,7 @@ def seed_relics(session, csv_path: str = 'resources/db_seed/relics.csv'):
                 print(f"Invalid divinity '{divinity_str}' in relic '{name}'")
                 continue
 
-            exists = session.query(Relic).filter_by(name=name).first()
+            exists = session.query(Relic).filter_by(name=name, relic_type=relic_type).first()
             if not exists:
                 session.add(Relic(name=name, relic_type=relic_type, cultivation_type=c_type_obj, divinity=divinity))
     session.commit()
