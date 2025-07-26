@@ -27,6 +27,12 @@ def test_create_scraped_json(scraper, caplog):
 
 
 @save_log
+def test_scrape_name(scraper, caplog):
+    """ Check we can scrape taoist name (even if friend). """
+    scraper.scrape_name()
+
+
+@save_log
 def test_scrape_precision(scraper, caplog):
     """ Run scraper five times and assert no errors occur and print the variance in results.
     Expected to run from Taoist screen.

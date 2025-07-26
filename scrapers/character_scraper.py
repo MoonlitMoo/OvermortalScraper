@@ -185,10 +185,12 @@ class CharacterScraper:
         dict
             {Name : value} pairing
         """
-        # Open report screen by tapping more and report
+        # Open report screen by tapping more and report buttons
         self.screen.tap(200, 1225)
         time.sleep(0.1)
-        self.screen.tap(400, 990)
+        if not self.screen.tap_button("character_screen/report"):
+            logger.warning("[SCRAPE_NAME] Failed to get to report screen")
+            return {}
         time.sleep(0.1)
         # Capture text of name
         img = self.screen.update()
