@@ -163,13 +163,17 @@ class RankingScraper:
                 return None
         return 300, ranks[next_rank]
 
-    def run(self):
+    def run(self, max_rank: int = 100):
         total_read = 0
         total_added = 0
 
-        while self.current_taoist < 100:
+        # TODO: Scrape self
+
+        while self.current_taoist < max_rank:
             pos = self.get_next_taoist()
             self.current_taoist += 1
+            if self.current_taoist == self.my_ranking:
+                continue
             added = self.scrape_taoist(*pos)
             time.sleep(.25)
             if added:
