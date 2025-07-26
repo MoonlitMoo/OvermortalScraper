@@ -266,7 +266,7 @@ class CharacterScraper:
         self.logger.debug("Finished scraping")
         # Exit pet screen and wait until we can see the button again
         self.screen.tap(500, 1500)
-        self.screen.wait_for_state("../buttons/character_screen/pet")
+        self.screen.wait_for_state("/character_screen/pet_button")
         return results
 
     def scrape_total_br(self):
