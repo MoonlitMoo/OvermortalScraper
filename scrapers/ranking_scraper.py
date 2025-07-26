@@ -27,35 +27,63 @@ class RankingScraper:
         pass
 
     def scrape_taoist_card(self, row_x, row_y, my_card: bool = False):
-        """ Gets taoist name and BR total from the row card. """
+        """ Gets taoist name and BR total from the row card.
+
+        Parameters
+        ----------
+        row_x : int
+            Pixel x for card
+        row_y : int
+            Pixel y for card
+        my_card : bool
+            Whether this is the special my rank card
+
+        Returns
+        -------
+        name : str
+            Scraped name for the taoist
+        br_val : float
+            Scraped total BR for the taoist.
+        """
         if self.current_taoist <= 3:
-            # Can't do it normally, so enter character and use char scraper.
+            # Top rank: open the character directly and use the character screen. Can take a while for some reason.
             self.screen.tap(row_x, row_y)
             time.sleep(1.5)
             name = self.taoist_scraper.scrape_name()['name']
-            time.sleep(.5)
+            time.sleep(0.5)
+
+            # Attempt to click the compare BR button to get BR value
             if not self.screen.tap_button("character_screen/compare_button"):
-                logger.warning("[SCRAPE_TAOIST_CARD] Failed to click compare br button to get total BR")
+                logger.warning("[SCRAPE_TAOIST_CARD] Failed to click compare BR button to get total BR")
                 br_val = 0
             else:
-                time.sleep(.5)
+                time.sleep(0.5)
                 br_val = self.taoist_scraper.scrape_total_br()["total_br"]
+
             self.screen.back()
-            time.sleep(.2)
+            time.sleep(0.2)
             self.screen.back()
-            time.sleep(.2)
+            time.sleep(0.2)
+
         else:
-            # Otherwise we define boxes based on row_y and OCR the values.
-            name_box = (300, 750, row_y - 50, row_y) if not my_card else (300, 750, row_y - 50, row_y + 50)
+            # Lower rank: use OCR to extract name and BR from the list view
+            # Special card has centred name, while normal is aligned to the top
+            name_box = (300, 750, row_y - 50, row_y + 50) if my_card else (300, 750, row_y - 50, row_y)
             br_box = (830, 1000, row_y - 25, row_y + 25)
+
             self.screen.filter_notifications = True
             self.screen.update()
-            name_text = self.processor.extract_text_from_area(self.screen.CURRENT_SCREEN, name_box,
-                                                              use_name_reader=True)
-            br_text = self.processor.extract_text_from_area(self.screen.CURRENT_SCREEN, br_box)
+
+            name_text = self.processor.extract_text_from_area(
+                self.screen.CURRENT_SCREEN, name_box, use_name_reader=True)
+            br_text = self.processor.extract_text_from_area(
+                self.screen.CURRENT_SCREEN, br_box)
+
             self.screen.filter_notifications = False
+
             name = name_text
             br_val = parse_text_number(br_text)
+
         return name, br_val
 
     def requires_scrape(self, name: str, br: float):
@@ -89,37 +117,42 @@ class RankingScraper:
         bool
             Whether self was scraped
         """
-        top1_x, top1_y = 550, 300
-        my_x, my_y = 300, 1500
-        # Check if I need to be updated
-        temp = self.current_taoist
+        top1_coords = (550, 300)
+        my_coords = (300, 1500)
+
+        # Check if scrape is necessary, need to set current_taoist not in top 3 so taoist_card doesn't open character
+        original_taoist = self.current_taoist
         self.current_taoist = 4
-        name, br_val = self.scrape_taoist_card(my_x, my_y)
+        name, br_val = self.scrape_taoist_card(*my_coords)
+
         if not self.requires_scrape(name, br_val):
-            logger.debug(f"[RankingScraper SCRAPE_SELF] Did not scrape self.")
+            logger.debug("[RankingScraper SCRAPE_SELF] Did not scrape self.")
+            self.current_taoist = original_taoist
             return False
-        self.current_taoist = temp
-        # Use top 1 taoist to compare against, because I'll never be the best :)
-        # This gets all data via COMPARE BR button.
+
+        self.current_taoist = original_taoist
+
+        # Get stats from Compare BR screen (via Top 1)
         self.taoist_scraper.own_character = True
-        self.screen.tap(top1_x, top1_y)
+        self.screen.tap(*top1_coords)
         time.sleep(0.5)
         my_data = self.taoist_scraper.scrape()
         self.screen.back()
         time.sleep(0.5)
 
-        # Now we update from my profile, with relics, pets, name
+        # Fix name + BR, then get relics/pets from own character screen
         my_data.update({"name": name, "total_br": br_val})
-        # Open my character and get items
-        self.screen.tap(my_x, my_y)
+
+        self.screen.tap(*my_coords)
         time.sleep(0.5)
         my_data.update(self.taoist_scraper.scrape_relics())
         my_data.update(self.taoist_scraper.scrape_pets())
         self.screen.back()
         time.sleep(0.5)
+
         self.taoist_scraper.own_character = False
         self.service.add_taoist_from_scrape(my_data)
-        logger.debug(f"[RankingScraper SCRAPE_SELF] Scraped self.")
+        logger.debug("[RankingScraper SCRAPE_SELF] Scraped self.")
         return True
 
     def scrape_taoist(self, row_x, row_y):
@@ -253,10 +286,10 @@ class RankingScraper:
             self.current_taoist += 1
             if self.current_taoist == self.my_ranking:
                 continue
-            added = self.scrape_taoist(*pos)
-            time.sleep(.25)
-            if added:
+
+            if self.scrape_taoist(*pos):
                 total_added += 1
             total_read += 1
+            time.sleep(.25)
 
         logger.info(f"[RankingScraper RUN] Added {total_added}/{total_read} taoists from the leaderboard.")

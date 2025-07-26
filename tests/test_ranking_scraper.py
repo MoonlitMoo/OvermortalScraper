@@ -1,4 +1,5 @@
 import json
+import time
 
 import pytest
 
@@ -121,6 +122,6 @@ def test_run(scraper, caplog, monkeypatch):
     """ Test we can go through all the taoists (without scraping)
     Needs to start at the top of the leaderboard.
     """
-    monkeypatch.setattr(scraper.taoist_scraper, "scrape", lambda: {})
+    monkeypatch.setattr(scraper.taoist_scraper, "scrape", lambda: {time.sleep(0.5)})
     monkeypatch.setattr(scraper.service, "add_taoist_from_scrape", lambda x: 0)
-    scraper.run()
+    scraper.run(scrape_self=False)
