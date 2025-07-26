@@ -1,8 +1,8 @@
 from db.init import init_db
-from log import logger
+from core.log import logger
 from scrapers.ranking_scraper import RankingScraper
-from scrapers.screenshot_processor import ScreenshotProcessor
-from screen import Screen
+from core.screenshot_processor import ScreenshotProcessor
+from core.screen import Screen
 
 session = init_db()
 screen = Screen(logger)
