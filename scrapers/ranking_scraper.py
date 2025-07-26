@@ -307,8 +307,8 @@ class RankingScraper:
         taoist_id = self.service.check_for_existing_taoist(name, br)
         do_update = True if taoist_id is None else False
         self.screen.tap(row_x, row_y)
+        time.sleep(.5)
         if do_update:
-            time.sleep(.5)
             taoist_data = self.taoist_scraper.scrape()
             # Add taoist and get id in same step
             taoist_id = self.service.add_taoist_from_scrape(taoist_data).id
