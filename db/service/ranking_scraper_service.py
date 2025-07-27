@@ -54,7 +54,7 @@ class RankingScraperService:
         self.db.refresh(taoist)
         return taoist
 
-    def add_duel_result(self, winner_id: int, loser_id: int):
+    def add_duel_result(self, winner_id: int, loser_id: int, duration: float):
         """ Adds a duel record to the database
 
         Parameters
@@ -63,13 +63,15 @@ class RankingScraperService:
             Taoist id from database of the winner
         loser_id : int
             Taoist id from database of the loser
+        duration : float
+            Length of the duel in seconds
 
         Returns
         -------
         DuelRecord
             The object inserted into the database
         """
-        record = DuelRecord(winner_id=winner_id, loser_id=loser_id)
+        record = DuelRecord(winner_id=winner_id, loser_id=loser_id, duration=duration)
         self.db.add(record)
         self.db.commit()
         self.db.refresh(record)

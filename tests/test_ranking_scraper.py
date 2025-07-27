@@ -129,7 +129,7 @@ def test_add_duel_record(scraper, taoist_data):
 
 @save_log
 def test_run(scraper, caplog, monkeypatch):
-    """ Test we can go through all the taoists (without scraping, but with duelling)
+    """ Test we can go through all the taoists without actually scraping or duelling.
     Needs to start at the top of the leaderboard.
     """
 
@@ -137,13 +137,17 @@ def test_run(scraper, caplog, monkeypatch):
         time.sleep(0.5)
         return 1
 
+    def mock_duel():
+        scraper.screen.back()
+        return True, 10
+
     class MockTaoist:
         id = 0
-
-    monkeypatch.setattr(scraper.taoist_scraper, "scrape", lambda: mock_scrape)
+    scraper.current_taoist=4
+    monkeypatch.setattr(scraper.taoist_scraper, "scrape", mock_scrape)
     monkeypatch.setattr(scraper.service, "add_taoist_from_scrape", lambda x: MockTaoist())
-    monkeypatch.setattr(scraper.service, "add_duel_result", lambda winner_id, loser_id: 0)
+    monkeypatch.setattr(scraper.service, "add_duel_result", lambda winner_id, loser_id, duration: 0)
     # Duel exits char screen
-    monkeypatch.setattr(scraper, "duel_taoist", lambda: scraper.screen.back())
+    monkeypatch.setattr(scraper, "duel_taoist", mock_duel)
     scraper.my_database_id = 0
     scraper.run(allow_self_update=False)

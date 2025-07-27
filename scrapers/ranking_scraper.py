@@ -257,6 +257,8 @@ class RankingScraper:
         -------
         did_win : bool
             If the duel was won.
+        duel_duration : float
+            Length of duel in seconds
         """
         # Start screen by tapping more and duel buttons
         self.screen.tap(200, 1225)
@@ -264,12 +266,14 @@ class RankingScraper:
         if not self.screen.tap_button("character_screen/duel"):
             self.logger.warning("Failed to get to start duel")
             return None
+        start_time = time.perf_counter()
         time.sleep(0.1)
         # Wait until duel is finished, with 60s timeout for long duels
         try:
             self.screen.wait_for_any_state(["battle_screen/victory", "battle_screen/defeat"], timeout=60)
         except StateNotReached:
             return None
+        duel_duration = time.perf_counter() - start_time
         did_win = True if self.screen.find("state/battle_screen/victory") is not None else False
         self.logger.debug(f"Duel finished with {'win' if did_win else 'loss'}")
 
@@ -285,7 +289,7 @@ class RankingScraper:
         self.screen.wait_for_state("locations/town/chaos_rankings/br_leaderboard")
 
         self.logger.debug(f"Returned to leaderboard")
-        return did_win
+        return did_win, duel_duration
 
     def scrape_taoist(self, row_x, row_y):
         """ Checks current taoist and adds to database if necessary.
@@ -314,11 +318,13 @@ class RankingScraper:
         self.logger.info(f"Scraped rank {self.current_taoist}.")
 
         # Duel and save results.
-        did_win = self.duel_taoist()
-        if did_win:
-            self.service.add_duel_result(winner_id=self.my_database_id, loser_id=taoist_id)
-        else:
-            self.service.add_duel_result(winner_id=taoist_id, loser_id=self.my_database_id)
+        result = self.duel_taoist()
+        if result is not None:
+            did_win, duration = result
+            if did_win:
+                self.service.add_duel_result(winner_id=self.my_database_id, loser_id=taoist_id, duration=duration)
+            else:
+                self.service.add_duel_result(winner_id=taoist_id, loser_id=self.my_database_id, duration=duration)
 
         return do_update
 
