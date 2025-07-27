@@ -235,13 +235,15 @@ class RankingScraper:
 
         ranks = self.get_visible_ranks()
 
-        _iter, max_iter = 0, 100
-        # Continue while max and min of ranks < current rank (i.e. screen showing higher range than we want)
-        while max(ranks) < self.current_taoist and min(ranks) < self.current_taoist and _iter < max_iter:
+        _iter, max_iter, scroll_distance = 0, 100, 400
+        # Continue while current rank not in visible range (with sanity limit ~num of leaderboard)
+        scroll_down = min(ranks) < self.current_taoist
+        while not min(ranks) <= self.current_taoist <= max(ranks) and _iter < max_iter:
             _iter += 1
-            # Assume we are above and scroll down until we find the right range.
-            self.screen.swipe(1079, 1200, 1079, 1000, 200)  # 200 pixel ~1.5 rows
-            self.screen.tap(1079, 1185)
+            # Make sure we offset the right way
+            offset = -scroll_distance if scroll_down else scroll_distance
+            self.screen.swipe(1079, 1200, 1079, 1200 + offset, 200)  # 200 pixel ~1.5 rows
+            self.screen.swipe(500, 1200, 600, 1200, 900)  # Halt inertia scrolling
             ranks = self.get_visible_ranks()
 
         if self.current_taoist not in ranks:
