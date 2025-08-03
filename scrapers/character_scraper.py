@@ -189,11 +189,14 @@ class CharacterScraper:
         valid_names = valid_names if isinstance(valid_names, list) else [e.value for e in valid_names]
         item, sim = self.validate_string(test_name, valid_names, item_type)
         if sim < self.SIMILARITY_THRESHOLD:
+            # If we are on the character screen after failing to get a valid item, there probably isn't one.
+            if self.screen.find("state/character_screen/pet_button") is not None:
+                return None
             self.screen.capture(f"debug/unknown_item_{test_name}.png", update=False)
 
         # Return back to main screen
         self.screen.tap(500, 1800)
-        self.screen.wait_for_state("../buttons/character_screen/pet")
+        self.screen.wait_for_state("character_screen/pet_button")
         return item
 
     def scrape_name(self):

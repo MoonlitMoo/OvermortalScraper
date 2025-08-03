@@ -44,6 +44,8 @@ class CharacterScraperService:
 
     def get_relic_id(self, name: str, relic_type: str) -> int:
         """Look up and return the ID of a relic given its name/type."""
+        if name is None:
+            return None
         relic = self.db.query(Relic).filter_by(name=name, relic_type=relic_type).first()
         if not relic:
             raise ValueError(f"No relic of type {type} found with name: {name}")
@@ -51,6 +53,8 @@ class CharacterScraperService:
 
     def get_curio_id(self, name: str) -> int:
         """Look up and return the ID of a curio given its name."""
+        if name is None:
+            return None
         curio = self.db.query(Curio).filter_by(name=name).first()
         if not curio:
             raise ValueError(f"No stage found with name: {name}")
