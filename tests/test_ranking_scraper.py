@@ -54,6 +54,16 @@ def test_just_keep_scrolling(scraper):
     x, y = scraper.get_taoist_pixels()
 
 
+def test_recover_from_button_press(scraper):
+    ranks = scraper.get_visible_ranks()
+    scraper.current_taoist = min(ranks.keys())
+    x, y = scraper.get_taoist_pixels()
+    scraper.screen.tap(x, y)
+    time.sleep(1)
+    ranks = scraper.get_visible_ranks()
+    assert ranks
+
+
 def test_scrape_row_taoist_card(scraper):
     """ Make sure we can get the taoist info from the row card. """
     ranks = scraper.get_visible_ranks()
@@ -143,7 +153,8 @@ def test_run(scraper, caplog, monkeypatch):
 
     class MockTaoist:
         id = 0
-    scraper.current_taoist=4
+
+    scraper.current_taoist = 4
     monkeypatch.setattr(scraper.taoist_scraper, "scrape", mock_scrape)
     monkeypatch.setattr(scraper.service, "add_taoist_from_scrape", lambda x: MockTaoist())
     monkeypatch.setattr(scraper.service, "add_duel_result", lambda winner_id, loser_id, duration: 0)

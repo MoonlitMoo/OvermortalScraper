@@ -177,6 +177,18 @@ class RankingScraper:
         dict
             rank: y value
         """
+        # Sanity check we aren't in character screen
+        # Performance hit but means we can recover accidental button press on scroll
+        try:
+            self.screen.wait_for_state("locations/town/chaos_rankings/BR_leaderboard", timeout=2)
+        except StateNotReached:
+            # If in character go back
+            if self.screen.find("state/character_screen/pet_button"):
+                self.screen.back()
+                time.sleep(0.2)
+                self.screen.update()
+            else:
+                raise StateNotReached("We managed to find no-mans land")
         # Find all the BR pics, sorted in ascending y.
         br_image = "resources/ranking_scraper/br_symbol.png"
         br_positions = self.screen.find_all_images(br_image)
