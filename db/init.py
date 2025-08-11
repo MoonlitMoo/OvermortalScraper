@@ -77,7 +77,7 @@ def seed_abilities(session, csv_path: str = "resources/db_seed/abilities.csv"):
 def seed_pet(session):
     type_names = [("BABEOX", "BABEOX"), ("BABEDEER", "BABEDEER"), ("BABETOISE", "BABETOISE"),
                   ("BELEPHANT", "BELEPHANT"), ("BABEWYRM", "BABEWYRM"), ("BLAZELION", "BLAZELION"),  # Babies
-                  ("VISIOX", "BABEOX"), ("SECONDDEER", "BABEDEER"), ("DAEMOTOISE", "BABETOISE"),
+                  ("VISIOX", "BABEOX"), ("CHROMADEER", "BABEDEER"), ("DAEMOTOISE", "BABETOISE"),
                   ("LOTOPHANT", "BELEPHANT"), ("NECROWYRM", "BABEWYRM"), ("DRACOLION", "BLAZELION"),  # Adult
                   ("FLAMMOX", "BABEOX"), ("THIRDDEER", "BABEDEER"), ("CELESTOISE", "BABETOISE"),
                   ("SPIRIPHANT", "BELEPHANT"), ("VODYEWYRM", "BABEWYRM"), ("ETHERALION", "BLAZELION"),  # Human
