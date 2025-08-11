@@ -119,6 +119,7 @@ class CharacterScraper:
         index = similarities.index(max(similarities))
         if max(similarities) < self.SIMILARITY_THRESHOLD:
             self.logger.warning(f"Unknown {str_desc} '{value}'")
+            self.screen.capture(name=f"debug/{str_desc}={value}.png", update=False)
         self.logger.debug(f"Unknown {str_desc} '{value}' "
                           f"using '{valid_strings[index]}' with similarity {similarities[index]:.3f}")
         return valid_strings[index], max(similarities)
