@@ -106,7 +106,7 @@ class RankingScraper:
         time.sleep(0.5)
 
         self.taoist_scraper.own_character = False
-        self.service.add_taoist_from_scrape(my_data)
+        self.my_database_id = self.service.add_taoist_from_scrape(my_data)
         self.logger.debug("Updated own taoist data")
         return True
 
