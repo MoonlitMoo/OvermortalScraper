@@ -51,6 +51,17 @@ class ClashScraper:
         self.own_br = brs[-1]
         return brs[:-1]
 
+    def get_opponent_location(self, index: int):
+        """ Get the screen location of the enemy taoist at given index in list. """
+        matches = self.screen.find_all_images("resources/buttons/locations/town/clash/challenge.png")
+        matches = sorted(matches, key=lambda i: i[0][1])
+        if len(matches) < 5:
+            self.logger.warning("Couldn't locate all possible opponents ons Seek Opponent")
+            self.screen.capture("debug/seek_opponent.png")
+        # Offset y by ~ half button width = 30px
+        x, y = matches[index][0]
+        self.logger.debug(f"Found opponent index {index} at {x, y + 30}")
+        return x, y + 30
 
     def basic_predict(self, enemy_brs: List[float]):
         """ Predict win probability for own taoist vs opponents."""
