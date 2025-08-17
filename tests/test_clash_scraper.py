@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 import pytest
 
@@ -28,6 +30,7 @@ def test_get_opponent_br(scraper, caplog):
 
 @save_log
 def test_basic_predictor(scraper, caplog):
+    """ Check we get actual values for predictions. """
     enemy_brs = np.linspace(30e9, 60e9, 5).tolist()
     scraper.own_br = 40e9
     proba = scraper.basic_predict(enemy_brs)
@@ -36,5 +39,16 @@ def test_basic_predictor(scraper, caplog):
 
 @save_log
 def test_get_taoist_location(scraper, caplog):
+    """ Check we can find all 5 opponent locations. """
     for i in range(5):
         assert scraper.get_opponent_location(i)
+
+
+@save_log
+def test_get_taoist_stats(scraper, caplog):
+    """ Check we can get from the database and scrape if needed. """
+    taoist_id = scraper.get_taoist_stats(0)
+    time.sleep(1)
+    # Try again
+    taoist_id_2 = scraper.get_taoist_stats(0)
+    assert taoist_id == taoist_id_2, "Failed to retrieve same taoist from db."
