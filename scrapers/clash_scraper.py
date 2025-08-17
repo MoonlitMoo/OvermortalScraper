@@ -1,4 +1,7 @@
 import time
+from typing import List
+
+import joblib
 
 from core.screen import Screen
 from core.screenshot_processor import ScreenshotProcessor, parse_text_number
@@ -20,8 +23,17 @@ class ClashScraper:
         self.screen.green_select = (300, 450, 700, 900)
         self.screen.filter_notifications = True
         self.own_br = None
+        self.simple_model = joblib.load("total_br_model.joblib")
 
     def get_opponent_brs(self):
+        """ Gets the opponent BRs in Seek Opponent screen.
+        Also sets own br.
+
+        Returns
+        -------
+        brs : list of float
+            Opponent brs sorted from the highest challenge rank to lowest
+        """
         # Scroll down to get all opponents in frame
         self.screen.swipe_down(100, 100)
         time.sleep(.1)  # Wait for settle
@@ -39,6 +51,17 @@ class ClashScraper:
         self.own_br = brs[-1]
         return brs[:-1]
 
+
+    def basic_predict(self, enemy_brs: List[float]):
+        """ Predict win probability for own taoist vs opponents."""
+        proba = []
+        for br in enemy_brs:
+            diff = self.own_br - br
+            p = self.simple_model.predict_proba([[self.own_br, br, diff]])
+            proba.append(p[0][1])  # Returned as (lose, win)
+
+        self.logger.debug(f"Found probabilities {proba}")
+        return proba
     def run(self, attempts: int = 3):
         # For each attempt
         # Get opponent brs
