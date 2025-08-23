@@ -162,3 +162,4 @@ class Taoist(Base):
     magicka_stage = relationship("CultivationStage", foreign_keys=[magicka_stage_id ])
     swordia_stage = relationship("CultivationStage", foreign_keys=[swordia_stage_id])
     ghostia_stage = relationship("CultivationStage", foreign_keys=[ghostia_stage_id])
+    literatia_stage = relationship("CultivationStage", foreign_keys=[literatia_stage_id])
