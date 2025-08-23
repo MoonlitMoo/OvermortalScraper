@@ -8,7 +8,7 @@ from core.log import logger
 from core.screen import Screen
 from core.screenshot_processor import ScreenshotProcessor
 from scrapers.character_scraper import CharacterScraper
-from tests.utils import save_log, db_session, run_function_precision, print_error_report
+from tests.utils import save_log, db_session, run_function_precision, print_error_report, fix_dirs
 
 
 @pytest.fixture
