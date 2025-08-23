@@ -1,10 +1,13 @@
 from sqlalchemy.orm import Session
-from db.models import CultivationStage, Ability, Pet, Relic, Curio
+from db.models import CultivationStage, Ability, Pet, Relic, Curio, CultivationType
 
 
 class CharacterScraperService:
     def __init__(self, db: Session):
         self.db = db
+
+    def get_cultivation_types(self):
+        return [s.name for s in self.db.query(CultivationType).all()]
 
     def get_cultivation_stages(self):
         return [s.name for s in self.db.query(CultivationStage).all()]

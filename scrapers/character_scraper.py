@@ -323,8 +323,10 @@ class CharacterScraper:
         cultivation_x = (250, 490) if self.own_character else (700, 1000)
         stage_names = self.service.get_cultivation_stages()
         minor_stage_names = [v.value for v in CultivationMinorStage]
+        names = self.service.get_cultivation_types()
+        text_y = [1010, 1100, 1185, 1270, 1360]
         # Iterate through the different cultivation blocks
-        for y, name in zip([1010, 1100, 1185, 1270], ["magicka", "corporia", "swordia", "ghostia"]):
+        for y, name in zip(text_y, names):
             area = (*cultivation_x, y - 40, y + 40)
             text = ' '.join(self.processor.extract_text_from_area(
                 img, area, all_text=True, faint_text=self.own_character))
@@ -343,8 +345,8 @@ class CharacterScraper:
                 if minor_stage is None:
                     self.logger.warning(f"Missing minor stage for {stage}")
 
-            result[f"{name}_stage_id"] = stage_id
-            result[f"{name}_minor_stage"] = minor_stage
+            result[f"{name.lower()}_stage_id"] = stage_id
+            result[f"{name.lower()}_minor_stage"] = minor_stage
         self.screen.tap(100, 1800)
 
         # Scroll to Daemonfae and open details

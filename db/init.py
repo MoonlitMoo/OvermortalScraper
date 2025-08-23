@@ -28,7 +28,7 @@ def seed_cultivation_levels(session):
         if not session.query(CultivationStage).filter_by(name=name).first():
             session.add(CultivationStage(name=name))
 
-    type_names = ["CORPORIA", "MAGICKA", "SWORDIA", "GHOSTIA"]
+    type_names = ["CORPORIA", "MAGICKA", "SWORDIA", "GHOSTIA", "LITERATIA"]
     for name in type_names:
         if not session.query(CultivationType).filter_by(name=name).first():
             session.add(CultivationType(name=name))

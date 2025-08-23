@@ -50,6 +50,8 @@ class Taoist(Base):
     magicka_minor_stage = Column(Enum(CultivationMinorStage))
     ghostia_stage_id = Column(Integer, ForeignKey("CultivationStage.id"), nullable=False)
     ghostia_minor_stage = Column(Enum(CultivationMinorStage))
+    literatia_stage_id = Column(Integer, ForeignKey("CultivationStage.id"), nullable=False, server_default='0')
+    literatia_minor_stage = Column(Enum(CultivationMinorStage))
     # Divine cultivation
     alignment = Column(Enum(Divinity))
     daemonfae_stage = Column(Integer)
